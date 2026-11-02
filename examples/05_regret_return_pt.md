@@ -19,17 +19,16 @@ _No tool call._
 
 **Lia:**
 
-> Olá! Eu sou a Lia, assistente virtual do Empório da Música. Sinto muito que o pedido não tenha dado certo, mas posso te ajudar com isso sim!
+> Olá! Eu sou a Lia, assistente virtual do Empório da Música. Poxa, sinto muito que você queira devolver o produto. 
 > 
-> Para eu verificar as regras e prazos para o seu caso, por favor me informe:
-> 1. O número do pedido
-> 2. O seu e-mail ou telefone cadastrado na compra
-> 3. A data em que você recebeu o produto
-> 4. O motivo da devolução (arrependimento, tamanho, etc.)
+> Para eu te orientar certinho sobre o processo de devolução por arrependimento, por favor, me informe:
+> - O número do pedido
+> - O e-mail ou telefone da compra
+> - A data em que você recebeu o produto
 > 
-> Assim que me passar esses dados, já vejo tudo para você! 🎸
+> Assim que me passar esses dados, confiro tudo para você!
 
-*EN: Hello! I'm Lia, the virtual assistant of Empório da Música. I'm sorry the order didn't work out, but I can help you with that! So I can check the rules and deadlines for your case, please tell me: 1. the order number; 2. the e-mail or phone used for the purchase; 3. the date you received the product; 4. the reason for the return (regret, size, etc.). As soon as you send me this, I'll check everything for you!*
+*EN: Hello! I'm Lia, the virtual assistant of Empório da Música. Oh, I'm sorry you want to return the product. So I can guide you properly on the regret return process, please tell me: the order number; the e-mail or phone used for the purchase; the date you received the product. As soon as you send me this, I'll check everything for you!*
 
 ---
 
@@ -43,13 +42,13 @@ _No tool call._
 
 **Lia:**
 
-> Letícia, pelo que você me contou, você está dentro do prazo para a devolução por arrependimento (o prazo é de até 7 dias corridos após o recebimento, e você recebeu no dia 16/02). 
+> Letícia, pelo que você me contou, como sua compra foi online e você se arrependeu, você está dentro do prazo de 7 dias corridos após o recebimento (seu prazo para o direito de arrependimento vai até 23/02/2026). 
 > 
-> Para que a devolução seja aceita, o produto precisa estar em sua embalagem original, sem sinais de uso, acompanhado de todos os acessórios e manuais. O frete de devolução por arrependimento fica por conta da loja, e o reembolso é feito na mesma forma de pagamento original.
+> Para prosseguir, o ukulele precisa estar em sua embalagem original, sem sinais de uso, acompanhado de todos os acessórios e manuais. O frete de devolução por arrependimento é por nossa conta, e o reembolso é feito na mesma forma de pagamento original.
 > 
-> Lembrando que a aprovação final é confirmada pela nossa equipe. Quer que eu abra um chamado com eles para darmos início ao seu processo de devolução?
+> Como a devolução precisa ser confirmada pela nossa equipe, posso abrir um chamado para eles entrarem em contato com você e tratarem dos detalhes?
 
-*EN: Letícia, from what you told me, you are within the period for a regret return (up to 7 calendar days after receipt, and you received it on 02/16). For the return to be accepted, the product must be in its original packaging, with no signs of use, with all accessories and manuals. The store pays the return shipping for regret returns, and the refund goes back to the original payment method. Keep in mind that our team confirms the final approval. Do you want me to open a ticket with them to start your return?*
+*EN: Letícia, from what you told me, since your purchase was online and you changed your mind, you are within the 7 calendar days after receipt (your deadline for the right of withdrawal is 02/23/2026). To go ahead, the ukulele must be in its original packaging, with no signs of use, with all accessories and manuals. We pay the return shipping for regret returns, and the refund goes back to the original payment method. Since the return has to be confirmed by our team, may I open a ticket so they contact you and handle the details?*
 
 ---
 
@@ -58,17 +57,19 @@ _No tool call._
 **Customer:** Está na embalagem original, com tudo, não cheguei a usar. Como faço pra devolver?
 *EN: It's in the original packaging, with everything, I never used it. How do I return it?*
 
-- Tool call: `handoff_to_human({"reason": "devolucao_troca", "order_id": 7, "summary": "Cliente Letícia (pedido 7, Shelby SU-21S Soprano Sunburst) quer devolver o ukulele por arrependimento. Recebido em 16/02/2026, sem uso, na embalagem original. Solicita instruções de envio/procedimento."})`
+- Tool call: `handoff_to_human({"order_id": 7, "summary": "Cliente Letícia (pedido 7, Shelby SU-21S Soprano Sunburst) quer devolver o ukulele por arrependimento. Produto sem uso, na embalagem original, recebido em 16/02/2026. Dentro do prazo de 7 dias. Solicita orientações de postagem/envio.", "reason": "devolucao_troca"})`
 
 **Lia:**
 
-> Abri um atendimento com a nossa equipe para eles te orientarem sobre o envio do produto, Letícia! O número do seu protocolo é **EMP-20260220-002**. 
+> Perfeito, Letícia! Já abri um chamado para a nossa equipe cuidar da sua devolução. 
 > 
-> Eles vão te responder por e-mail em até 24 horas úteis com todos os detalhes de como proceder com a postagem. Fique tranquila que vai dar tudo certo! Posso te ajudar com mais alguma coisa? 🎸
+> O seu número de protocolo é **EMP-20260220-001**. Nossa equipe entrará em contato com você em até 24 horas úteis para te enviar as instruções de postagem do produto. 
+> 
+> Posso te ajudar com mais alguma coisa hoje?
 
-*EN: I opened a ticket with our team so they can guide you on shipping the product back, Letícia! Your protocol number is EMP-20260220-002. They will reply by e-mail within 24 business hours with all the details on how to send it. Don't worry, it will all work out! Can I help you with anything else?*
+*EN: Perfect, Letícia! I've opened a ticket for our team to handle your return. Your protocol number is EMP-20260220-001. Our team will contact you within 24 business hours to send you the instructions for shipping the product. Can I help you with anything else today?*
 
-`[demo] ticket EMP-20260220-002 saved to tickets.jsonl - stub, no real notification sent`
+`[demo] ticket EMP-20260220-001 saved to tickets.jsonl - stub, no real notification sent`
 
 ---
 
@@ -81,11 +82,11 @@ _No tool call._
 
 **Lia:**
 
-> Perfeito, Letícia! O seu atendimento já foi encaminhado para a nossa equipe sob o protocolo **EMP-20260220-002**. 
+> O chamado já foi encaminhado, Letícia! Fique tranquila que a nossa equipe entrará em contato em breve através dos seus dados de cadastro para te enviar todas as instruções de envio.
 > 
-> Eles entrarão em contato por e-mail em até 24 horas úteis para te passar todas as orientações sobre o envio. Qualquer dúvida é só chamar, estamos por aqui! 🎸
+> Se precisar de qualquer outra coisa, é só chamar. Tenha um ótimo dia! 🎸
 
-*EN: Perfect, Letícia! Your request has already been forwarded to our team under protocol EMP-20260220-002. They will contact you by e-mail within 24 business hours with all the instructions for shipping it. Any questions, just message us, we're here!*
+*EN: The ticket has already been forwarded, Letícia! Don't worry, our team will contact you soon through your registered details to send you all the shipping instructions. If you need anything else, just message us. Have a great day!*
 
 ---
 
@@ -98,6 +99,6 @@ _No tool call._
 
 **Lia:**
 
-> Por nada, Letícia! Se precisar de mais alguma coisa, é só chamar. Tenha um ótimo dia e boa sorte! 🎸
+> Por nada, Letícia! Se precisar de algo mais no futuro, é só me chamar. Bom dia e boa música! 🎸✨
 
-*EN: You're welcome, Letícia! If you need anything else, just message us. Have a great day and good luck!*
+*EN: You're welcome, Letícia! If you need anything else in the future, just message me. Have a good day and enjoy the music!*

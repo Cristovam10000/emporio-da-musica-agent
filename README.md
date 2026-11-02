@@ -29,7 +29,7 @@ Copy `.env.example` to `.env` (`copy .env.example .env` on Windows, `cp .env.exa
 | `python -m emporio --debug` | Same, and after each answer it prints the tool calls, their arguments, a short result and the latency. |
 | `python -m emporio --now 2026-11-01T21:30` | Fixes the store clock (Campo Grande time), for example to see the "closed on a holiday" behaviour. |
 | `python -m emporio --script examples/scripts/01_catalog.txt --out examples/01_catalog.md` | Script mode: replays a conversation script against the real model and writes a Markdown transcript with the tool calls. |
-| `python -m pytest` | 137 deterministic tests. They use no LLM and no API key. |
+| `python -m pytest` | 140 deterministic tests. They use no LLM and no API key. |
 | `python evals/run_eval.py --runs 3` | Routing eval against the real model (section 7). Add `--compare` to also run `EMPORIO_COMPARE_MODEL`, which needs `OPENROUTER_API_KEY`. Reports are written to `evals/results/`. |
 | `python scripts/data_quality.py` | Prints the data quality findings (section 6). It needs no API key. |
 
@@ -59,7 +59,7 @@ flowchart LR
     T5 --> J["tickets.jsonl<br/>(stub)"]
 ```
 
-**Life of one message.** The customer types a message. The CLI calls `run_turn`, which invokes the agent with the session's `thread_id` and `recursion_limit=11`. Before each model call, a `dynamic_prompt` middleware rebuilds the system prompt. That prompt includes the current date and time, whether the store is open, when it reopens, tomorrow's hours, and the language of the customer's latest message. The store status and the language are both computed in code. The model either answers or asks for tools. The framework validates each tool's arguments against a Pydantic schema. An invalid argument goes back to the model as an error message, so it can correct itself. Each tool runs plain Python over the in-memory data and returns JSON with prices already formatted (`"R$ 2.199,00"`). The model reads the results and either calls more tools or writes the answer. The CLI prints the answer. If a ticket was opened, the CLI adds a `[demo]` line outside Lia's speech. In `--debug` mode it also prints the tool calls and the latency. If the provider fails or the step limit is hit, the customer gets a fixed apology with the store phone number, and the conversation stays usable.
+**Life of one message.** The customer types a message. The CLI calls `run_turn`, which invokes the agent with the session's `thread_id` and `recursion_limit=11`. Before each model call, a `dynamic_prompt` middleware rebuilds the system prompt. That prompt includes the current date and time, whether the store is open, when it reopens, tomorrow's hours, and the language of the customer's latest message. The store status and the language are both computed in code. The model either answers or asks for tools. The framework validates each tool's arguments against a Pydantic schema. An invalid argument goes back to the model as an error message, so it can correct itself. Each tool runs plain Python over the in-memory data and returns JSON with prices already formatted (`"R$ 2.199,00"`). The model reads the results and either calls more tools or writes the answer. The CLI prints the answer. If a ticket was opened, the CLI adds a `[demo]` line outside Lia's speech. In `--debug` mode it also prints the tool calls and the latency. If a tool raises an unexpected exception, the model gets an error result naming the exception type and apologizes (`ToolErrorMiddleware`). If the provider fails or the step limit is hit, the customer gets a fixed apology with the store phone number, and the conversation stays usable.
 
 Repository layout: `emporio/` (`data.py` loading and normalization, `rules.py` business rules, `tools.py` the 5 tools, `prompts.py` the system prompt, `agent.py` the agent, `__main__.py` the CLI), `knowledge/policies.md` (policy text by section), `tests/`, `evals/` (cases and runner), `scripts/` (data quality, provider smoke test), `examples/` (scripts and transcripts). The original materials in `data/` are unchanged.
 
@@ -67,7 +67,7 @@ Repository layout: `emporio/` (`data.py` loading and normalization, `rules.py` b
 
 **Framework: LangChain v1 `create_agent` on the LangGraph runtime.** I used LangChain's prebuilt agent instead of a custom graph. It is the simplest option that gives tool calling, argument validation and conversation memory without hand-writing a loop. Underneath, the loop is: the model decides, the tool node runs the tools, the results go back to the model, and this repeats until the model answers without calling a tool. My code is the rules, the tools, the prompt and the tests. *Alternatives considered:* a hand-written loop was the first plan, and it would have re-implemented what `create_agent` already ships. I chose the framework after reading the job description, which asks for LangChain/LangGraph experience. A custom `StateGraph` was also considered. I would use one when there is persistent per-customer state, a handoff that pauses the run for a human (interrupts), or more than one agent. None of those is needed here. Versions are pinned in `requirements.txt` because the LangChain API changes often. Framework behaviour I measured and adapted to (langchain 1.4.7, langgraph 1.2.19):
 - The default recursion limit is 9999. Every call passes `recursion_limit=11`, which is 5 tool rounds plus the final answer, since each round is 2 graph steps.
-- Invalid arguments and unknown tools come back to the model as `ToolMessage(status="error")`, but an exception raised inside a tool crashes the loop. So expected failures (order not found, contact mismatch, empty category) are returned as data, never raised.
+- Invalid arguments and unknown tools come back to the model as `ToolMessage(status="error")`, but an exception raised inside a tool crashes the loop by default. So expected failures (order not found, contact mismatch, empty category) are returned as data, never raised, and `ToolErrorMiddleware` turns any unexpected exception into an error result for the model (only the exception type, not its message). Without it, one failing call out of two parallel calls left the history with a call that had no result.
 - If a run stops after the model asked for tools, the history is left with tool calls that have no results, and providers reject that thread. `run_turn` closes those calls so the next message still works.
 
 **Approach: function calling with 5 typed tools, not vector RAG or a SQL agent.** The data is small and structured: 65 products, 20 orders, 4 active promotions. The questions are exact filters ("acoustic guitars under R$1000", "order 8"). Typed tools are predictable and testable, and they apply the business rules. Vector RAG over CSV rows would retrieve similar text, not apply "price ≤ 1000 and in stock". A SQL agent could write a wrong query and would still not apply the PIX/promotion/installment rules.
@@ -94,7 +94,7 @@ The customer's language is **detected in code** (a small PT/EN word-list heurist
 **Business logic in code.** `emporio/rules.py` uses `Decimal` with `ROUND_HALF_UP` for all money:
 - Current price = promotion price if a promotion is active, else the list price.
 - PIX = list price minus 5%, only when no promotion is active (the policy says discounts do not stack).
-- Maximum interest-free installments = the largest n ≤ 12 whose exact share meets the tier minimum: R$50 for 1-3x, R$80 for 4-6x, R$100 for 7-12x. When rounding makes the last installment differ, the tool returns it so the installments add up to the price.
+- Maximum interest-free installments = the largest n ≤ 12 whose exact share meets the tier minimum: R$50 for 1-3x, R$80 for 4-6x, R$100 for 7-12x. Installments are truncated to the cent and the remainder goes to the last one, so they add up to the price and none falls below the tier minimum (rounding up could leave a last installment of R$ 99,95 in a 12x plan).
 - Combined payment methods are allowed only above R$2,000.
 - Return windows are counted from the received date the customer states: 7 days to regret an online purchase, 7 days to exchange by preference, 30 days from purchase to exchange a defective item, 90 days of legal warranty from receipt.
 - Open/closed status uses the store hours plus national and Mato Grosso do Sul holidays (the `holidays` library) and Campo Grande's anniversary (Aug 26).
@@ -156,21 +156,21 @@ Output of `python scripts/data_quality.py` (today = 2026-11-02):
 
 ## 7. Evaluation
 
-**Unit tests (137, no LLM, run in about 3 seconds).**
+**Unit tests (140, no LLM, run in about 3 seconds).**
 
 | File | Tests | Covers |
 |---|---|---|
 | `tests/test_rules.py` | 24 | PIX, promotions, installment tier boundaries and inexact divisions, split payment, open/closed with holidays (Sunday 2026-11-01 21:00 → reopens Tuesday 09:00, skipping All Souls' Day), holiday names, return windows including the deadline day. |
-| `tests/test_tools.py` | 58 | Search ("takamine gd20", "gd 20", "ck20" → the right product; "martin d-28" ambiguous; "GD99" is not GD20), listing excludes out-of-stock and discontinued items, the order flow (wrong contact gets the generic refusal, order 8 is delayed, a received date before the purchase is rejected), installments that add up to the price, policy sections, ticket numbering, JSON-serializable results. |
+| `tests/test_tools.py` | 60 | Search ("takamine gd20", "gd 20", "ck20" → the right product; "martin d-28" ambiguous; "GD99" is not GD20), listing excludes out-of-stock and discontinued items, the order flow (wrong contact gets the generic refusal, order 8 is delayed, a received date before the purchase is rejected), installments that add up to the price without breaking the tier minimum, policy sections, ticket numbering, JSON-serializable results. |
 | `tests/test_prompts.py` | 23 | Store status and closed-day reason in the prompt, every tool named, language detection for every script and eval message, eval-case and script schemas. |
 | `tests/test_eval.py` | 15 | The eval checker itself, including answers that must fail (from the code review). |
-| `tests/test_agent.py` | 8 | Agent and CLI with a scripted fake model: memory between turns, the step limit and provider errors falling back while keeping the thread usable, script mode transcripts with the `[demo]` line, `--now`, exit code 2 without a model. |
+| `tests/test_agent.py` | 9 | Agent and CLI with a scripted fake model: memory between turns, the step limit and provider errors falling back while keeping the thread usable, a tool exception in parallel calls, script mode transcripts with the `[demo]` line, `--now`, exit code 2 without a model. |
 | `tests/test_data.py`, `tests/test_data_quality.py` | 9 | Loading, types, normalization, the data quality script. |
 
 **Routing eval (real model).** `evals/cases.yaml` has 12 cases in English and Portuguese: catalog with a budget, price with PIX, active promotion, ambiguous product, order with a wrong contact, delayed order, accessories, off-topic, a prompt injection asking for 50% off, opening hours on a holiday eve, a regret return before and after the customer gives their data. Each case runs on a fresh thread, and the checks are:
 - **Tools:** `tools_any_of` lists alternative tool sets, so equivalent valid paths pass. For example, a delayed order passes with or without an immediate handoff, and a regret return may or may not fetch the policy.
 - **Key arguments:** e.g. `order_id: 8`, `category: violoes`, `max_price: 1000`. Numbers are compared numerically.
-- **Values in the final answer:** e.g. the PIX price "2.089,05", the promotion's "439,20", "549,00" and "20%", the tracking code, the regret deadline. **Values that must not appear:** the 50%-off price, a price for an ambiguous product, any order detail after a wrong contact, "approved" for a return.
+- **Values in the final answer:** e.g. the PIX price "2.089,05", the promotion's "439,20", "549,00" and "20%", the tracking code, the regret deadline. **Values that must not appear:** the 50%-off price (in three number formats), a price for an ambiguous product, the tracking code, item, first name or delivery date after a wrong contact, "approved" for a return. These are fixed substrings: a vaguer leak such as "your order exists and has shipped" would not be caught, which is why the tool itself returns the same answer for a wrong contact and a non-existent order.
 
 Each case's expected values are computed from the CSV rows named in a comment above it. LLM answers vary between runs (Gemini 3.x ignores temperature), so the same case can pass and fail on consecutive runs. For that reason the runner has `--runs N` and reports passed runs per case.
 
@@ -212,7 +212,7 @@ Generated with script mode against Gemini 3.5 Flash-Lite. The store clock is fix
 
 | Conversation | What it demonstrates |
 |---|---|
-| [01 - Catalog](examples/01_catalog.md) | `list_products` with category and budget (out-of-stock and discontinued guitars left out), PIX and installments, a multi-turn "only nylon strings" follow-up, an out-of-stock product answered with alternatives. |
+| [01 - Catalog](examples/01_catalog.md) | `list_products` with category and budget (out-of-stock and discontinued guitars left out), PIX and installments, a multi-turn "only nylon strings" follow-up, an out-of-stock product reported as temporarily unavailable with an offer to look up alternatives. |
 | [02 - Price and promotion](examples/02_price_promo.md) | Price with PIX; a promotion that is no longer active, answered with the current price; an active 20% promotion shown with the original price; PIX not stacking on promotions; the minimum-installment rule (5x, not 12x). |
 | [03 - Delayed order](examples/03_delayed_order.md) | A wrong e-mail gets the same answer as a non-existent order. With the right e-mail: shipped, tracking code, past its estimated delivery, an apology and a ticket (`[demo]` line). |
 | [04 - Scope, hours, robustness](examples/04_scope_hours_robustness.md) | Accessories redirected without naming other stores, saxophones (empty category) answered with a special-order offer, "open tomorrow?" on All Souls' Day eve, an off-topic refusal, and a prompt injection that leaves the price unchanged. |
@@ -261,6 +261,7 @@ I used AI assistants throughout, with each model in a defined role and a review 
   - the eval assertions were too weak.
 
   All four were fixed with regression tests. The coordinator's own review found the search failing on "gd 20" and "ck20", and missing policy interpretation notes.
+- **Final gate.** A second read-only Codex review before submission ran a clean clone and found that 3 tests failed on a Portuguese-locale machine (holiday names followed the OS locale), plus a parallel tool-failure path that broke the next turn, an invented reply channel ("by e-mail") in conversation 05 and a last installment that could fall below the tier minimum. All were fixed with tests, and conversations 01 and 05 were regenerated.
 - **Live runs.** Running the real model found the language drift and the repeated request for the order number (section 7).
 
 What I decided / validated myself:

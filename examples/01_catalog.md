@@ -13,22 +13,22 @@
 
 **Customer:** Hi! Which acoustic guitars do you have under R$1000?
 
-- Tool call: `list_products({"max_price": "1000", "category": "violoes"})`
+- Tool call: `list_products({"category": "violoes", "max_price": "1000"})`
 
 **Lia:**
 
-> Here are some of the acoustic guitars we have under R$ 1.000,00:
+> Here are some great acoustic guitar options we have under R$ 1.000,00:
 > 
-> - **Tagima Memphis AC-39 Nylon Natural**: R$ 429,90 (or R$ 408,41 via PIX, up to 5x of R$ 85,98 interest-free)
-> - **Rozini RC-104 Nylon Estudante**: R$ 459,90 (or R$ 436,91 via PIX, up to 5x of R$ 91,98 interest-free)
-> - **Shelby SN-100 Folk Aço Preto**: R$ 549,00 (or R$ 521,55 via PIX, up to 6x of R$ 91,50 interest-free)
-> - **Giannini GF-1R Aço Folk Sunburst**: R$ 579,90 (or R$ 550,91 via PIX, up to 6x of R$ 96,65 interest-free)
-> - **Yamaha C40 Nylon Natural**: R$ 599,90 (or R$ 569,91 via PIX, up to 6x of R$ 99,98 interest-free, last one R$ 100,00)
-> - **Giannini GN-15 Nylon Cedr Natural**: R$ 689,00 (or R$ 654,55 via PIX, up to 6x of R$ 114,83 interest-free, last one R$ 114,85)
-> - **Yamaha F310 Aço Natural**: R$ 699,90 (or R$ 664,91 via PIX, up to 6x of R$ 116,65 interest-free)
-> - **Tagima Dallas Tuner Aço Natural**: R$ 749,00 (or R$ 711,55 via PIX, up to 7x of R$ 107,00 interest-free)
+> 1. **Tagima Memphis AC-39 Nylon Natural** – R$ 429,90 (or R$ 408,41 on PIX, up to 5x of R$ 85,98 interest-free)
+> 2. **Rozini RC-104 Nylon Estudante** – R$ 459,90 (or R$ 436,91 on PIX, up to 5x of R$ 91,98 interest-free)
+> 3. **Shelby SN-100 Folk Aço Preto** – R$ 549,00 (or R$ 521,55 on PIX, up to 6x of R$ 91,50 interest-free)
+> 4. **Giannini GF-1R Aço Folk Sunburst** – R$ 579,90 (or R$ 550,91 on PIX, up to 6x of R$ 96,65 interest-free)
+> 5. **Yamaha C40 Nylon Natural** – R$ 599,90 (or R$ 569,91 on PIX, up to 6x of R$ 99,98 interest-free, last one R$ 100,00)
+> 6. **Giannini GN-15 Nylon Cedr Natural** – R$ 689,00 (or R$ 654,55 on PIX, up to 6x of R$ 114,83 interest-free, last one R$ 114,85)
+> 7. **Yamaha F310 Aço Natural** – R$ 699,90 (or R$ 664,91 on PIX, up to 6x of R$ 116,65 interest-free)
+> 8. **Tagima Dallas Tuner Aço Natural** – R$ 749,00 (or R$ 711,55 on PIX, up to 7x of R$ 107,00 interest-free)
 > 
-> We have a few more options in this price range as well! Are you looking for nylon strings (classical) or steel strings (folk)? Let me know if any of these caught your eye! 🎶
+> We also have a few more options if you'd like to see them! Do you prefer nylon or steel strings, or are you looking for anything specific?
 
 ---
 
@@ -36,19 +36,19 @@
 
 **Customer:** Only nylon strings, please.
 
-- Tool call: `list_products({"category": "violoes", "strings": "nylon", "max_price": "1000"})`
+- Tool call: `list_products({"max_price": "1000", "category": "violoes", "strings": "nylon"})`
 
 **Lia:**
 
-> Here are all our nylon-string acoustic guitars under R$ 1.000,00:
+> Here are our nylon-string acoustic guitar options under R$ 1.000,00:
 > 
-> - **Tagima Memphis AC-39 Nylon Natural**: R$ 429,90 (or R$ 408,41 via PIX, up to 5x of R$ 85,98 interest-free)
-> - **Rozini RC-104 Nylon Estudante**: R$ 459,90 (or R$ 436,91 via PIX, up to 5x of R$ 91,98 interest-free)
-> - **Yamaha C40 Nylon Natural**: R$ 599,90 (or R$ 569,91 via PIX, up to 6x of R$ 99,98 interest-free, last one R$ 100,00)
-> - **Giannini GN-15 Nylon Cedr Natural**: R$ 689,00 (or R$ 654,55 via PIX, up to 6x of R$ 114,83 interest-free, last one R$ 114,85)
-> - **Yamaha C70 Nylon Natural**: R$ 849,00 (or R$ 806,55 via PIX, up to 8x of R$ 106,13 interest-free, last one R$ 106,09)
+> 1. **Tagima Memphis AC-39 Nylon Natural** – R$ 429,90 (or R$ 408,41 on PIX, up to 5x of R$ 85,98 interest-free)
+> 2. **Rozini RC-104 Nylon Estudante** – R$ 459,90 (or R$ 436,91 on PIX, up to 5x of R$ 91,98 interest-free)
+> 3. **Yamaha C40 Nylon Natural** – R$ 599,90 (or R$ 569,91 on PIX, up to 6x of R$ 99,98 interest-free, last one R$ 100,00)
+> 4. **Giannini GN-15 Nylon Cedr Natural** – R$ 689,00 (or R$ 654,55 on PIX, up to 6x of R$ 114,83 interest-free, last one R$ 114,85)
+> 5. **Yamaha C70 Nylon Natural** – R$ 849,00 (or R$ 806,55 on PIX, up to 8x of R$ 106,12 interest-free, last one R$ 106,16)
 > 
-> Do you have any questions about these models or would you like to know more about a specific one?
+> Would you like more details on any of these models, or do you need help with anything else?
 
 ---
 
@@ -60,9 +60,11 @@
 
 **Lia:**
 
-> The PIX price for the Yamaha C40 Nylon Natural is **R$ 569,91** (its regular price is R$ 599,90, and you can also pay in up to 6x of R$ 99,98 interest-free, with the last installment being R$ 100,00). 
+> The PIX price for the Yamaha C40 Nylon Natural is **R$ 569,91** (its regular price is R$ 599,90). 
 > 
-> Would you like to know anything else about it or any other model?
+> It can also be paid in up to 6x of R$ 99,98 interest-free (with the last installment being R$ 100,00). 
+> 
+> Can I help you with anything else today?
 
 ---
 
@@ -74,11 +76,9 @@
 
 **Lia:**
 
-> The Giannini GF-3D Dreadnought Sunburst is temporarily unavailable in our store right now. Its regular price is R$ 799,90 (or R$ 759,91 via PIX, up to 7x of R$ 114,27 interest-free with the last one at R$ 114,28). 
+> The **Giannini GF-3D Dreadnought Sunburst** is currently temporarily unavailable in our store. Its regular price is R$ 799,90 (or R$ 759,91 on PIX, up to 7x of R$ 114,27 interest-free).
 > 
-> Since you were looking at nylon-string guitars earlier, just a heads-up that this Giannini model actually has steel strings! 
-> 
-> If you'd like, I can suggest some similar available steel-string acoustic guitars, or help you with anything else!
+> Since you were looking at nylon-string guitars earlier, would you like to see some available steel-string acoustic guitars in a similar price range, or is there another model you're curious about?
 
 ---
 
@@ -90,4 +90,4 @@ _No tool call._
 
 **Lia:**
 
-> You're very welcome! If you need anything else, just let me know. Have a wonderful rest of your Sunday! 🎸
+> You're very welcome! If you need anything else or have more questions about our instruments, just let me know. Have a wonderful rest of your day! 🎸✨
