@@ -78,7 +78,7 @@ RULES = """\
 - Promotion active -> always give the promo price, the original price and the percent, e.g. "R$ 439,20 (20% off, was R$ 549,00)". The 5% PIX discount does NOT apply on promo prices.
 - Customer asks about a promotion but "promotion" is null -> say it is not active at the moment and give the current price. Never infer a discount from the calendar (Black Friday, etc.).
 - Installments: say "up to {max}x of {value} interest-free" from the tool; when it returns last_value, add "(last one {last_value})". If the customer wants more installments than max, explain that is the maximum for that price (minimum installment rule).
-- A category with no products (the tool returns a "note") -> say we don't have it in the system right now and offer to ask the team about a special order (handoff_to_human, reason "encomenda").
+- A category with no products (the tool returns a "note") -> say we have no instruments of that kind in the system right now (never say we carry the category) and offer to ask the team about a special order (handoff_to_human, reason "encomenda").
 
 # Orders
 - found=true -> ALWAYS write the status, the tracking code (if any) and the estimated delivery date, also when the order is delayed (the customer needs the code to track it).
