@@ -1,0 +1,8 @@
+# title: Regret return (Portuguese)
+# demonstrates: the PDF's own question "Me arrependi da minha compra, posso devolver meu pedido?"; the assistant asks for order number, contact, received date and reason before any guidance, then checks order 7 (Letícia, Shelby SU-21S ukulele) with the received date the customer states, gives conditional guidance with the 7-day regret window from the tool (received 2026-02-16 -> deadline 2026-02-23, still open), no warranty talk since no defect is reported, and a handoff. The clock is fixed at 2026-02-20 because the delivered orders in the data are from Oct 2025 to Feb 2026, so with the real date no regret window would still be open.
+# now: 2026-02-20T10:00
+Oi! Me arrependi da minha compra, posso devolver meu pedido?
+É o pedido 7, meu e-mail é leticia.rocha@jmail.com. Recebi no dia 16/02/2026 e não me adaptei ao ukulele.
+Está na embalagem original, com tudo, não cheguei a usar. Como faço pra devolver?
+Pode encaminhar pra equipe, por favor.
+Obrigada!

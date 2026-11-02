@@ -1,0 +1,8 @@
+# title: Prices, promotions and installments
+# demonstrates: find_product price with PIX, an inactive promotion answered with the current price (Takamine GD20 had a 12% "Oferta Especial" that is no longer active), an active promotion shown with original price and percent (Ohana CK-20, 20% off), PIX not stacking on promo prices, and the minimum installment rule (the promo price allows at most 5x, not 12x).
+# now: 2026-11-01T21:30
+How much is the Takamine GD20?
+I saw a 12% offer on it some time ago, is it still on?
+And the Ohana CK-20 ukulele?
+Can I stack the PIX discount on top of that?
+Can I pay it in 12 installments?

@@ -1,0 +1,8 @@
+# title: Browsing acoustic guitars under R$1000
+# demonstrates: list_products with category and budget (only purchasable items: the out-of-stock Giannini GF-3D and the discontinued Shelby SN-7C are left out), PIX and installments, a multi-turn follow-up filter, and an out-of-stock product answered with alternatives (policy 7.3). Sunday night clock, so the store is closed.
+# now: 2026-11-01T21:30
+Hi! Which acoustic guitars do you have under R$1000?
+Only nylon strings, please.
+What's the PIX price for the Yamaha C40?
+And the Giannini GF-3D? A friend recommended it.
+Great, thanks!
