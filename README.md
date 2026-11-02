@@ -235,36 +235,50 @@ The scripts are in `examples/scripts/`. To regenerate one: `python -m emporio --
 - **Reuse:** expose the tools as an MCP server (`langchain-mcp-adapters`) so other clients and agents can use them.
 - **Routing confidence:** a decision-only routing model that returns confidence scores (e.g. TypeSafe's Jev) could send low-confidence turns to a human.
 
-## 10. AI coding assistants
+## 10. AI coding assistants: how I worked
 
-<!-- DRAFT: rewrite in your own words -->
+I used AI as a small team that I directed, not as autocomplete. The build ran in **Orca**, a desktop app that runs several coding agents side by side, each in its own git worktree, and coordinates them with a task protocol (tasks, heartbeats, `worker_done` reports, blocking questions). One Claude Code session coordinated; other agents executed well-specified tasks; a model from a different vendor reviewed. Two rules held throughout: **the decisions were mine, and no AI output was accepted without evidence**, meaning passing tests, a review by a different model, or a run against the real model. It is the same split the store agent uses (code for facts, LLM for language), applied to building it.
 
-I used AI assistants throughout, with each model in a defined role and a review step between them:
+| Role | Tool and model | What it did |
+|---|---|---|
+| Coordinator | Claude Code (Claude Opus 5.5), inside Orca | Read the materials, wrote the plan with me, split the work into tasks with written acceptance criteria, reviewed and merged every result, ran the real-model checks |
+| Workers (11 tasks, at most 3 at a time) | Claude Code agents launched by Orca, one git worktree and branch each | **Opus 5.5** (high effort) where logic matters: data loading, business rules, tools, prompt, agent and CLI, review fixes, README draft. **Sonnet 5.5** for well-specified text and scripts: policy transcription, eval runner, data-quality script |
+| Independent reviewer | Codex CLI (GPT, gpt-6.1-sol) | Critiqued the plan in 3 rounds before any code, then ran two read-only review gates inside Orca |
 
-- **Planning.** Claude Code (Claude Opus 5.5) analysed the challenge, the policy PDF and the CSVs, and drafted the plan: architecture, tool contracts, assumptions and the evaluation. GPT (gpt-6.1-sol via Codex CLI) critiqued the plan in 3 rounds. Changes from that critique:
-  - Return eligibility is no longer computed from `estimated_delivery`; the agent asks for the received date.
-  - Order verification is documented as demonstrative instead of "LGPD compliant".
-  - Money uses `Decimal` with explicit rounding instead of floats.
-  - An inactive promotion is "not active at the moment" instead of "ended".
-  - The eval checks values and accepts equivalent tool paths.
-  - The handoff became a visible stub instead of a ticket presented as real.
-  - Four of the five conversations are in English, as the instructions require.
-- **Framework.** The plan first had a hand-written agent loop. I revisited that after reading the job description and moved to LangChain v1 `create_agent`.
-- **Build.** The build ran in Orca with a Claude Code coordinator and parallel workers in separate git worktrees, each owning a disjoint set of files:
-  - foundation, business rules and tools: Claude Opus 5.5;
-  - policy transcription and the eval runner: Claude Sonnet 5.5;
-  - agent and CLI: Claude Opus 5.5.
-- **Review gate.** Codex (gpt-6.1-sol) did a read-only code review that found 4 issues:
-  - an unknown model number ("GD99") matched GD20;
-  - a received date before the purchase was accepted;
-  - rounded installments did not add up to the price;
-  - the eval assertions were too weak.
+```mermaid
+flowchart LR
+    P["Plan<br/>me + Claude Code,<br/>critiqued by Codex"] --> W0["Wave 0 (parallel)<br/>foundation · rules · policies"]
+    W0 --> W1["Wave 1 (parallel)<br/>tools · prompt + eval cases"]
+    W1 --> GB{{"Gate B<br/>Codex review"}}
+    GB --> W2["Wave 2 (parallel)<br/>agent + CLI · eval runner"]
+    W2 --> L["Real-model eval<br/>and transcripts"]
+    L --> GC{{"Gate C<br/>Codex: clean clone,<br/>secrets, README vs code"}}
+    GC --> S([Submission])
+```
 
-  All four were fixed with regression tests. The coordinator's own review found the search failing on "gd 20" and "ck20", and missing policy interpretation notes.
-- **Final gate.** A second read-only Codex review before submission ran a clean clone and found that 3 tests failed on a Portuguese-locale machine (holiday names followed the OS locale), plus a parallel tool-failure path that broke the next turn, an invented reply channel ("by e-mail") in conversation 05 and a last installment that could fall below the tier minimum. All were fixed with tests, and conversations 01 and 05 were regenerated.
-- **Live runs.** Running the real model found the language drift and the repeated request for the order number (section 7).
+**Efficient.**
+- Work ran in parallel only where the files were disjoint, so there were no merge conflicts. Each worker had its own branch, merged with `--no-ff`, which is why the commit history shows the real progress task by task.
+- Shared contracts were written before the parallel work: the tool contract (names, arguments, return shapes) and the agent contract (`build_agent`, `run_turn`). That let the prompt and eval cases be built at the same time as the tools, and the eval runner at the same time as the agent.
+- Each task got the model it needed: Opus for logic, Sonnet for transcription and scripts, and a reviewer from another vendor, because a different model misses different things.
+- The agent itself costs nothing to run. I limited it to free models, measured the free-tier limits in Google AI Studio (Flash: 20 requests/day; Flash-Lite: 500/day) and chose by those numbers.
 
-What I decided / validated myself:
-- _TODO_
-- _TODO_
-- _TODO_
+**Careful.**
+- API keys lived only in a git-ignored `.env` on my machine. The worker agents never received them, and the final gate checked the whole git history for secrets.
+- When Codex stopped on a security prompt (a new hook that could run outside its sandbox), I reviewed it myself instead of letting the coordinator choose.
+- Every worker result was re-run and probed before merging, the reviews came from a different model, and behavior was checked against the real model. The eval reports pass rates over several runs, not the best run. The transcripts are real runs, regenerated only after fixing the cause of a problem, and the glitches that remain are documented (section 9).
+
+**What the reviews and real-model runs caught**, all fixed with a test or a measured re-run:
+
+| Found by | Problem | Fix |
+|---|---|---|
+| Coordinator, probing a worker's code | Product search failed on "takamine gd 20" and "ohana ck20" | Letter/digit tokens, short tokens matched only against names |
+| A worker, while building the agent | The step limit measured earlier (7) was an artifact of the fake model | `recursion_limit=11` |
+| Codex, Gate B | "GD99" matched the GD20; a received date before the purchase was accepted; installments did not add up; eval assertions too weak | Confirmation note, date check after contact verification, exact last installment, stronger cases |
+| Real-model eval | English questions answered in Portuguese; order number asked twice; "let me check" without a tool call; "we are closed on Mondays" invented for a holiday | Language detected in code; explicit routing rules; closed-day reason computed in code |
+| Codex, Gate C (clean clone) | 3 tests failed on a Portuguese-locale machine; a failing tool in parallel calls broke the next turn; "by e-mail" invented; a last installment below the minimum | Explicit holiday language; `ToolErrorMiddleware`; prompt rule; truncated installments |
+
+**What I decided myself.**
+- I questioned the first plan's choice of a hand-written loop with no framework. After reading the job description, I moved to LangChain v1 `create_agent` on LangGraph, and kept it to the prebuilt agent instead of a custom graph.
+- I set the cost constraint (free models only), which led to measuring the free tiers and choosing Gemini 3.5 Flash-Lite. I picked Nemotron 3.5 Super VL as the comparison model after looking at other free options, and ruled out decision-only models (e.g. TypeSafe's Jev) because the agent has to write text.
+- I asked for the build to be split across agents with the result as the priority over speed, then reviewed and approved the proposed split (how many agents, which model for each task, the review gates).
+- I approved each wave before it started, handled the Codex security prompt, and asked for checks instead of assumptions (whether the free quotas were really used up, whether the reviewer had really finished).
