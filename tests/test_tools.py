@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime
+from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
@@ -71,6 +72,18 @@ def test_martin_d28_is_ambiguous(query):
     assert set(ids(result["matches"])) == {93, 108}
 
 
+@pytest.mark.parametrize("query, closest_id", [("Takamine GD99", 95), ("Ohana CK-99", 121)])
+def test_unknown_model_number_asks_to_confirm(query, closest_id):
+    result = find_product.invoke({"name": query})
+    assert result["ambiguous"] is True
+    assert ids(result["matches"]) == [closest_id]
+    assert "confirm before quoting" in result["note"]
+
+
+def test_exact_model_number_has_no_note():
+    assert "note" not in find_product.invoke({"name": "takamine gd20"})
+
+
 def test_brand_only_lists_all_its_products():
     result = find_product.invoke({"name": "takamine"})
     assert result["ambiguous"] is True
@@ -87,6 +100,24 @@ def test_promotion_price_replaces_pix():
     assert product["promotion"] == {"percent": 20, "price": "R$ 439,20", "original_price": "R$ 549,00"}
     assert product["pix_price"] is None
     assert product["installments"] == {"max": 5, "value": "R$ 87,84"}  # computed on R$ 439,20
+
+
+def money(text):
+    return Decimal(text.removeprefix("R$ ").replace(".", "").replace(",", "."))
+
+
+@pytest.mark.parametrize(
+    "price, expected",
+    [
+        ("599.90", {"max": 6, "value": "R$ 99,98", "last_value": "R$ 100,00"}),
+        ("849.00", {"max": 8, "value": "R$ 106,13", "last_value": "R$ 106,09"}),
+        ("1200.30", {"max": 12, "value": "R$ 100,03", "last_value": "R$ 99,97"}),
+    ],
+)
+def test_installments_add_up_to_the_price(price, expected):
+    plan = tools.installments_view(Decimal(price))
+    assert plan == expected
+    assert money(plan["value"]) * (plan["max"] - 1) + money(plan["last_value"]) == Decimal(price)
 
 
 @pytest.mark.parametrize(
@@ -188,6 +219,36 @@ def test_received_on_adds_return_windows():
         "defect_exchange": {"deadline": "2026-03-17", "still_open": False},  # 30 days from order date
         "legal_warranty": {"deadline": "2027-01-26", "still_open": True},
     }
+
+
+ORDER_7_DATE = date(2026, 2, 3)
+
+
+def order_7_owner_email():
+    data = tools.load_data()
+    return data.customers[data.orders[7].customer_id].email
+
+
+def test_received_before_order_date_asks_to_check_it():
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": 7, "contact": order_7_owner_email(), "received_on": "2026-01-01"})
+    assert result["found"] is True and result["order_date"] == ORDER_7_DATE.isoformat()
+    assert "return_windows" not in result and "days_since_receipt" not in result
+    assert "before the order date 2026-02-03" in result["received_on_error"]
+
+
+def test_received_on_the_order_date_is_accepted():
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": 7, "contact": order_7_owner_email(), "received_on": ORDER_7_DATE})
+    assert result["return_windows"]["regret"] == {"deadline": "2026-02-10", "still_open": False}
+    assert "received_on_error" not in result
+
+
+@pytest.mark.parametrize("order_id, contact", [(7, "someone@else.com"), (999, ORDER_8_EMAIL)])
+def test_bad_received_date_does_not_change_not_found(order_id, contact):
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": order_id, "contact": contact, "received_on": "2020-01-01"})
+    assert result == tools.ORDER_NOT_FOUND
 
 
 def test_received_on_in_the_future_is_rejected():

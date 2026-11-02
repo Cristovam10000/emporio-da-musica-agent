@@ -68,6 +68,16 @@ def brl(value: Decimal) -> str:
     return "R$ " + f"{value:,.2f}".translate(str.maketrans(",.", ".,"))
 
 
+def installments_view(price: Decimal) -> dict:
+    """Interest-free plan; "last_value" only when rounding makes the last installment differ."""
+    n, value = max_installments(price)
+    last = price - value * (n - 1)  # so the installments add up to the price exactly
+    plan = {"max": n, "value": brl(value)}
+    if last != value:
+        plan["last_value"] = brl(last)
+    return plan
+
+
 def _availability(p: Product) -> str:
     if p.status == "active":
         return "available" if p.stock_quantity > 0 else "temporarily_unavailable"
@@ -79,7 +89,6 @@ def product_view(p: Product) -> dict:
     percent = promo.discount_percent if promo else None
     price = effective_price(p.price_brl, percent)
     pix = pix_price(p.price_brl, percent)
-    installments, installment_value = max_installments(price)
     availability = _availability(p)
     return {
         "product_id": p.product_id,
@@ -88,7 +97,7 @@ def product_view(p: Product) -> dict:
         "list_price": brl(p.price_brl),
         "promotion": {"percent": percent, "price": brl(price), "original_price": brl(p.price_brl)} if promo else None,
         "pix_price": brl(pix) if pix else None,
-        "installments": {"max": installments, "value": brl(installment_value)},
+        "installments": installments_view(price),
         "split_payment_allowed": allows_split_payment(price),
         "availability": availability,
         "low_stock": availability == "available" and p.stock_quantity <= 2,
@@ -149,8 +158,9 @@ def find_product(name: str) -> dict:
     """Look up a SPECIFIC product the customer names (brand and/or model), in any status.
 
     Use it for price, availability, specs or promotion questions about a named product.
-    Returns up to 5 matches, best first. When "ambiguous" is true, ask the customer which
-    product they mean before giving a price. For browsing by category or budget, use
+    Returns up to 5 matches, best first. When "ambiguous" is true (several candidates, or a
+    model number the closest product does not have, explained in "note"), ask the customer
+    to confirm the product before giving a price. For browsing by category or budget, use
     list_products instead.
     """
     query_tokens = _tokens(name)
@@ -163,11 +173,21 @@ def find_product(name: str) -> dict:
     )
     best = scored[0][0]
     plausible = [(s, p) for s, p in scored if s >= MIN_SCORE and s >= best - PLAUSIBLE_MARGIN][:5]
-    return {
+    # Brand and prefix can outscore a wrong number ("gd99" -> GD20): a model number must be in the name.
+    unknown_number = bool(plausible) and any(
+        t.isdigit() and t not in _search_tokens(plausible[0][1].product_id)[0] for t in query_tokens
+    )
+    result = {
         "query": name,
-        "ambiguous": len(plausible) > 1,
+        "ambiguous": len(plausible) > 1 or unknown_number,
         "matches": [{**product_view(p), "score": round(s, 2)} for s, p in plausible],
     }
+    if unknown_number:
+        result["note"] = (
+            f"No exact model match for '{name}'; closest products shown - ask the customer to "
+            "confirm before quoting a price."
+        )
+    return result
 
 
 # --- list_products -----------------------------------------------------------------------
@@ -274,7 +294,7 @@ def get_order_status(order_id: int, contact: str, received_on: date | None = Non
     Use it when the customer asks about an existing order. Needs the order number AND the
     buyer's e-mail or phone; ask for both if missing. Pass received_on only when the customer
     told you when they received the item; the result then includes the return/exchange and
-    warranty deadlines.
+    warranty deadlines, or "received_on_error" when that date is before the order date.
     """
     data = load_data()
     order = data.orders.get(order_id)
@@ -299,7 +319,13 @@ def get_order_status(order_id: int, contact: str, received_on: date | None = Non
         and order.estimated_delivery is not None
         and order.estimated_delivery < today,
     }
-    if received_on:
+    # Checked only after the contact matches, so a wrong contact still learns nothing.
+    if received_on and received_on < order.order_date:
+        result["received_on_error"] = (
+            f"received_on {received_on.isoformat()} is before the order date {order.order_date.isoformat()}; "
+            "ask the customer to check the date they received the item."
+        )
+    elif received_on:
         windows = return_windows(received_on, today, purchased_on=order.order_date)
         result["days_since_receipt"] = (today - received_on).days
         result["return_windows"] = {

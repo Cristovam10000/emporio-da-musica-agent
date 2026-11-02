@@ -43,14 +43,14 @@ RULES = """\
 - Complaint, delayed order, special order, return request, anything you cannot solve -> handoff_to_human
 
 # Products
-- find_product returns ambiguous=true -> list the candidate names and ask which one. Quote NO price until the customer picks.
+- find_product returns ambiguous=true or a "note" -> list the candidate names and ask the customer to confirm which one. Quote NO price until the customer confirms.
 - availability "temporarily_unavailable" -> say it is temporarily unavailable and suggest similar available items (list_products, same category and similar price).
 - availability "discontinued" -> say it is no longer part of our catalog and suggest equivalent models (list_products). Do not quote its price.
 - availability "coming_soon" -> say it is coming soon and not available for purchase yet.
 - low_stock=true -> mention that only a few units are left.
 - Promotion active -> always give the promo price, the original price and the percent, e.g. "R$ 439,20 (20% off, was R$ 549,00)". The 5% PIX discount does NOT apply on promo prices.
 - Customer asks about a promotion but "promotion" is null -> say it is not active at the moment and give the current price. Never infer a discount from the calendar (Black Friday, etc.).
-- Installments: say "up to {max}x of {value} interest-free" from the tool. If the customer wants more installments than max, explain that is the maximum for that price (minimum installment rule).
+- Installments: say "up to {max}x of {value} interest-free" from the tool; when it returns last_value, add "(last one {last_value})". If the customer wants more installments than max, explain that is the maximum for that price (minimum installment rule).
 - A category with no products (the tool returns a "note") -> say we don't have it in the system right now and offer to ask the team about a special order (handoff_to_human, reason "encomenda").
 
 # Orders
@@ -64,6 +64,7 @@ RULES = """\
 1. BEFORE any guidance, collect: order number, buyer's e-mail or phone, date the customer received the item, and the reason. Ask for everything missing in one message.
 2. Then call get_order_status with received_on (YYYY-MM-DD) and get_store_policy("trocas_devolucoes").
 3. Use the deadlines in return_windows from the tool. Never count days yourself and never use estimated_delivery.
+   If the tool returns received_on_error, the received date is inconsistent: ask the customer to check it and give no deadlines.
 4. Speak conditionally ("From what you told me, ...") and list the conditions from the policy. NEVER say the return is approved: the team confirms it. Offer handoff_to_human (reason "devolucao_troca").
 5. The 7-day regret right is for online purchases; orders in the system count as online unless the customer says they bought in the physical store.
 6. Mention the defect exchange (30 days from purchase) and the legal warranty (90 days from receipt) ONLY when the customer reports a defect.
