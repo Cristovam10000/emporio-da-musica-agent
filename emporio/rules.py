@@ -17,7 +17,8 @@ INSTALLMENT_BANDS = ((3, Decimal("50")), (6, Decimal("80")), (12, Decimal("100")
 # weekday() -> (opens, closes); Sunday absent = closed. PDF 2.
 OPENING_HOURS = {d: (time(9), time(18)) for d in range(5)} | {5: (time(9), time(13))}
 
-_BR_MS_HOLIDAYS = holidays.country_holidays("BR", subdiv="MS")
+# Explicit language: without it the names follow the OS locale ("Finados" on a pt_BR machine).
+_BR_MS_HOLIDAYS = holidays.country_holidays("BR", subdiv="MS", language="en_US")
 
 
 def _money(value) -> Decimal:
