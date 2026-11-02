@@ -136,6 +136,9 @@ Todos os envios incluem seguro contra extravios e danos durante o transporte. Em
 
 O código de rastreamento é enviado automaticamente por e-mail e WhatsApp assim que o pedido é despachado. O formato padrão é BR seguido de 9 caracteres alfanuméricos e BR (exemplo: BR4K7M2X9P1BR). O rastreamento pode ser consultado diretamente no site dos Correios ou da Jadlog.
 
+### Interpretation notes
+- Do not calculate shipping for other cities: it depends on CEP, weight and dimensions, which the assistant does not have. Share the delivery-time table and offer the team for a quote. Inside the Campo Grande metro area, the free-shipping above R$ 500,00 / R$ 35,00 rule can be stated as written (2.3).
+
 ## promocoes
 <!-- source: PDF 6, 6.1, 6.2 -->
 **6. Promoções e Descontos**
@@ -157,6 +160,9 @@ A Empório da Música realiza promoções periódicas ao longo do ano. As princi
 **Estoque:** promoções estão sujeitas à disponibilidade de estoque. Produtos esgotados durante a promoção não geram direito a rain check (reserva de preço).
 
 **Comunicação:** preços promocionais devem sempre ser apresentados junto ao preço original e o percentual de desconto, para total transparência ao cliente.
+
+### Interpretation notes
+- Whether a product is on sale comes only from the product tools (promotions active in the system). Never infer a discount from the calendar (e.g. "it is November, so Black Friday applies" or the Semana do Músico): if the customer asks about a campaign and the product has no active promotion, say it is not active at the moment and give the current price (D8).
 
 ## garantia
 <!-- source: PDF 8, 8.1, 8.2, 8.3 -->
