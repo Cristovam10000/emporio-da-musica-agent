@@ -119,3 +119,10 @@ def test_legal_warranty_90_days_from_receipt():
     w =return_windows(received, date(2026, 10, 30))
     assert w.legal_warranty.deadline == date(2026, 10, 30) and w.legal_warranty.still_open
     assert not return_windows(received, date(2026, 10, 31)).legal_warranty.still_open
+
+
+def test_holiday_names():
+    from emporio.rules import holiday_name
+    assert holiday_name(date(2026, 11, 2)) == "All Souls' Day"
+    assert holiday_name(date(2026, 8, 26)) == "Campo Grande anniversary"
+    assert holiday_name(date(2026, 11, 4)) is None

@@ -4,7 +4,7 @@ import re
 from datetime import datetime, time, timedelta
 
 from emporio.data import normalize_text
-from emporio.rules import TZ, store_status
+from emporio.rules import OPENING_HOURS, TZ, holiday_name, store_status
 
 # strftime("%A") depends on the OS locale, so weekday names are fixed here.
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -111,21 +111,32 @@ def _day(dt: datetime) -> str:
     return f"{WEEKDAYS[dt.weekday()]} {dt:%Y-%m-%d}"
 
 
+def _closed_reason(day) -> str:
+    """Why a whole day is closed: the model invented "closed on Mondays" for a Monday holiday."""
+    name = holiday_name(day)
+    return f"public holiday: {name}" if name else WEEKDAYS[day.weekday()]
+
+
 def _context(now: datetime) -> str:
     now = now.replace(tzinfo=TZ) if now.tzinfo is None else now.astimezone(TZ)
     status = store_status(now)
     if status.is_open:
         state = f"Store OPEN until {status.closes_at:%H:%M}."
     else:
-        state = f"Store CLOSED. Reopens {_day(status.next_opening)} at {status.next_opening:%H:%M}."
+        whole_day = holiday_name(now.date()) or now.weekday() not in OPENING_HOURS
+        reason = _closed_reason(now.date()) if whole_day else "outside opening hours"
+        state = f"Store CLOSED ({reason}). Reopens {_day(status.next_opening)} at {status.next_opening:%H:%M}."
     tomorrow = datetime.combine(now.date() + timedelta(days=1), time(0), TZ)
     opening = store_status(tomorrow).next_opening
     if opening.date() == tomorrow.date():
         hours = f"open {opening:%H:%M}-{store_status(opening).closes_at:%H:%M}"
     else:
-        hours = "closed"
+        hours = f"closed ({_closed_reason(tomorrow.date())})"
+    week, saturday = OPENING_HOURS[0], OPENING_HOURS[5]
     return (
         "# Current context\n"
+        f"- Regular hours: Mon-Fri {week[0]:%H:%M}-{week[1]:%H:%M}, Sat {saturday[0]:%H:%M}-{saturday[1]:%H:%M}; "
+        "closed on Sundays and public holidays. Never give another reason for a closed day.\n"
         f"- Now: {_day(now)} {now:%H:%M} (America/Campo_Grande).\n"
         f"- {state}\n"
         f"- Tomorrow ({_day(tomorrow)}): {hours}.\n"

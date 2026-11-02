@@ -16,8 +16,10 @@ SCRIPTS = sorted((ROOT / "examples" / "scripts").glob("*.txt"))
 def test_closed_sunday_night_reopens_tuesday():
     prompt = build_system_prompt(datetime(2026, 11, 1, 21, 30, tzinfo=TZ))
     assert "Sunday 2026-11-01 21:30" in prompt
-    assert "Store CLOSED. Reopens Tuesday 2026-11-03 at 09:00." in prompt
-    assert "Tomorrow (Monday 2026-11-02): closed." in prompt  # Finados
+    assert "Store CLOSED (Sunday). Reopens Tuesday 2026-11-03 at 09:00." in prompt
+    # Finados: the reason is given so the model does not invent one ("closed on Mondays")
+    assert "Tomorrow (Monday 2026-11-02): closed (public holiday: All Souls' Day)." in prompt
+    assert "Regular hours: Mon-Fri 09:00-18:00, Sat 09:00-13:00" in prompt
 
 
 def test_open_wednesday_until_18():
@@ -113,3 +115,8 @@ def test_detected_language_is_stated_in_the_prompt():
     prompt = build_system_prompt(datetime(2026, 11, 4, 10, tzinfo=TZ), "English")
     assert "latest message is in English: write your whole reply in English" in prompt
     assert "latest message is in" not in build_system_prompt(datetime(2026, 11, 4, 10, tzinfo=TZ))
+
+
+def test_closed_reason_after_hours_and_on_a_holiday():
+    assert "Store CLOSED (outside opening hours)" in build_system_prompt(datetime(2026, 11, 3, 20, tzinfo=TZ))
+    assert "Store CLOSED (public holiday: All Souls' Day)" in build_system_prompt(datetime(2026, 11, 2, 10, tzinfo=TZ))

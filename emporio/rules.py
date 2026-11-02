@@ -64,16 +64,18 @@ class StoreStatus:
     closes_at: datetime | None  # set only when open
 
 
-def _is_holiday(day: date) -> bool:
-    """National + MS holidays, plus Campo Grande's anniversary (Aug 26).
+def holiday_name(day: date) -> str | None:
+    """National + MS holidays, plus Campo Grande's anniversary (Aug 26); None on other days.
 
     shortcut: other municipal holidays and optional days (e.g. Carnival) are not covered.
     """
-    return day in _BR_MS_HOLIDAYS or (day.month, day.day) == (8, 26)
+    if (day.month, day.day) == (8, 26):
+        return "Campo Grande anniversary"
+    return _BR_MS_HOLIDAYS.get(day)
 
 
 def _hours(day: date):
-    return None if _is_holiday(day) else OPENING_HOURS.get(day.weekday())
+    return None if holiday_name(day) else OPENING_HOURS.get(day.weekday())
 
 
 def store_status(now: datetime) -> StoreStatus:
