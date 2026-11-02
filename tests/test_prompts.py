@@ -63,3 +63,10 @@ def test_script_headers(path):
 
 def test_five_scripts():
     assert len(SCRIPTS) == 5
+
+
+def test_language_rule_comes_first():
+    prompt = build_system_prompt(datetime(2026, 11, 4, 10, 0))
+    assert prompt.startswith("# Language")
+    assert "customer's LATEST message" in prompt and "written in Portuguese" in prompt
+    assert prompt.index("# Language") < prompt.index("# Which tool to call")

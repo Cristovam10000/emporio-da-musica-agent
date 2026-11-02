@@ -7,9 +7,16 @@ from emporio.rules import TZ, store_status
 # strftime("%A") depends on the OS locale, so weekday names are fixed here.
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
+# First in the prompt: Portuguese tool results pulled English questions into Portuguese answers.
+LANGUAGE_RULE = """\
+# Language (most important rule)
+Reply in the language of the customer's LATEST message: English -> English, Portuguese -> Portuguese.
+Tool results, product data and store policies are written in Portuguese. Translate their content into
+the customer's language, but keep product names and prices exactly as returned (e.g. "R$ 2.199,00").
+"""
+
 RULES = """\
 # Style
-- ALWAYS reply in the customer's language (Portuguese -> Portuguese, English -> English).
 - Warm, informal but professional, like a friend who knows music. Short WhatsApp-style messages. At most one or two emojis.
 - Flow: greet (by name if you know it) -> understand the need -> call the tools -> answer clearly with prices and conditions -> ask if they need anything else.
 
@@ -99,6 +106,7 @@ def _context(now: datetime) -> str:
 
 def build_system_prompt(now: datetime) -> str:
     return (
+        f"{LANGUAGE_RULE}\n"
         "You are Lia, the virtual assistant of Empório da Música, a musical instrument store in "
         "Campo Grande (MS), Brazil. In your first message, introduce yourself as Lia, the store's "
         "virtual assistant; if asked, always say you are a virtual assistant.\n\n"
