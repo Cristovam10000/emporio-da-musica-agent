@@ -1,4 +1,4 @@
-"""Routing eval runner: python evals/run_eval.py [--model NAME] [--compare] [--only ID ...] [--delay S].
+"""Routing eval runner: python evals/run_eval.py [--model NAME] [--compare] [--only ID ...] [--delay S] [--runs N].
 
 Runs every case of evals/cases.yaml on a fresh agent thread and checks only the LAST answer plus
 the tools called across all turns of the case.
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CASES_FILE = Path(__file__).resolve().parent / "cases.yaml"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 RATE_LIMIT_WAIT = 60  # seconds; free tiers are per-minute
-RATE_LIMIT_MARKERS = ("429", "resource_exhausted", "rate")
+RATE_LIMIT_MARKERS = ("429", "resource_exhausted", "rate limit", "ratelimit")  # not bare "rate": "generate" has it
 
 
 def _same(expected, actual) -> bool:
@@ -107,16 +107,27 @@ def score(results: list[dict]) -> str:
     return f"{sum(r['pass'] for r in results)}/{len(results)}"
 
 
-def write_report(model: str, results: list[dict], delay: float) -> Path:
+def passes(runs: list[list[dict]], i: int) -> str:
+    """How many runs passed case i, e.g. "2/3": LLM answers vary between runs."""
+    return f"{sum(run[i]['pass'] for run in runs)}/{len(runs)}"
+
+
+def write_report(model: str, runs: list[list[dict]], delay: float) -> Path:
     from emporio.agent import DEFAULT_RECURSION_LIMIT
 
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", model).strip("-")
-    rows = "\n".join(
-        f"| {r['id']} | {'PASS' if r['pass'] else 'FAIL'} | {'; '.join(r['reasons']) or '-'} | "
-        f"{', '.join(r['tools']) or '-'} | {r['seconds']:.1f} |" for r in results)
+    rows = []
+    for i, first in enumerate(runs[0]):
+        reasons = sorted({x for run in runs for x in run[i]["reasons"]})
+        called = sorted({t for run in runs for t in run[i]["tools"]})
+        seconds = sum(run[i]["seconds"] for run in runs) / len(runs)
+        rows.append(f"| {first['id']} | {passes(runs, i)} | {'; '.join(reasons) or '-'} | "
+                    f"{', '.join(called) or '-'} | {seconds:.1f} |")
     text = (f"# Routing eval: {model}\n\n- Run date: {date.today()}\n"
-            f"- Config: recursion_limit={DEFAULT_RECURSION_LIMIT}, delay={delay}s, cases={CASES_FILE.name}\n"
-            f"- Score: **{score(results)}**\n\n| case | result | reasons | tools | seconds |\n|---|---|---|---|---|\n{rows}\n")
+            f"- Config: recursion_limit={DEFAULT_RECURSION_LIMIT}, delay={delay}s, runs={len(runs)}, "
+            f"cases={CASES_FILE.name}\n- Score per run: **{', '.join(score(run) for run in runs)}**\n\n"
+            "| case | passed runs | failure reasons (any run) | tools called (any run) | avg seconds |\n"
+            "|---|---|---|---|---|\n" + "\n".join(rows) + "\n")
     RESULTS_DIR.mkdir(exist_ok=True)
     path = RESULTS_DIR / f"{slug}.md"
     path.write_text(text, encoding="utf-8")
@@ -129,6 +140,7 @@ def main(argv=None) -> int:
     parser.add_argument("--compare", action="store_true", help="also run $EMPORIO_COMPARE_MODEL")
     parser.add_argument("--only", nargs="+", metavar="ID", help="run only these case ids")
     parser.add_argument("--delay", type=float, default=5.0, help="seconds between cases (default 5)")
+    parser.add_argument("--runs", type=int, default=1, help="repeat the eval N times; answers vary between runs")
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(ROOT))
@@ -148,20 +160,23 @@ def main(argv=None) -> int:
     if not all(models):
         parser.error("no model: pass --model or set EMPORIO_MODEL (and EMPORIO_COMPARE_MODEL for --compare)")
 
-    all_results = {}
+    all_runs = {}
     for model in models:
-        print(f"== {model}", file=sys.stderr)
-        all_results[model] = run_model(model, cases, args.delay)
-        print(f"\n{model}\n{table(all_results[model])}\n\nScore: {score(all_results[model])}")
-        print(f"Report: {write_report(model, all_results[model], args.delay)}")
+        all_runs[model] = []
+        for n in range(1, args.runs + 1):
+            print(f"== {model} (run {n}/{args.runs})", file=sys.stderr)
+            results = run_model(model, cases, args.delay)
+            all_runs[model].append(results)
+            print(f"\n{model} - run {n}\n{table(results)}\n\nScore: {score(results)}")
+        print(f"Report: {write_report(model, all_runs[model], args.delay)}")
 
-    if args.compare:
-        print("\nSide by side")
+    if args.compare or args.runs > 1:
+        print("\nPassed runs per case")
         print(f"{'case':36} " + " ".join(f"{m[:28]:28}" for m in models))
         for i, case in enumerate(cases):
-            print(f"{case['id']:36} " + " ".join(
-                f"{'PASS' if all_results[m][i]['pass'] else 'FAIL':28}" for m in models))
-        print(f"{'score':36} " + " ".join(f"{score(all_results[m]):28}" for m in models))
+            print(f"{case['id']:36} " + " ".join(f"{passes(all_runs[m], i):28}" for m in models))
+        print(f"{'score per run':36} " + " ".join(
+            f"{', '.join(score(run) for run in all_runs[m]):28}" for m in models))
     return 0
 
 
