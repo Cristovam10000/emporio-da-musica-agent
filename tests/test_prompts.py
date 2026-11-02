@@ -80,3 +80,7 @@ def test_unconfirmed_product_gets_no_price():
 def test_inconsistent_received_date_gets_no_deadlines():
     prompt = build_system_prompt(datetime(2026, 11, 4, 10, 0))
     assert "received_on_error" in prompt and "give no deadlines" in prompt
+
+
+def test_installments_mention_the_last_value():
+    assert '"(last one {last_value})"' in build_system_prompt(datetime(2026, 11, 4, 10, 0))

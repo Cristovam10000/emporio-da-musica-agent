@@ -68,6 +68,16 @@ def brl(value: Decimal) -> str:
     return "R$ " + f"{value:,.2f}".translate(str.maketrans(",.", ".,"))
 
 
+def installments_view(price: Decimal) -> dict:
+    """Interest-free plan; "last_value" only when rounding makes the last installment differ."""
+    n, value = max_installments(price)
+    last = price - value * (n - 1)  # so the installments add up to the price exactly
+    plan = {"max": n, "value": brl(value)}
+    if last != value:
+        plan["last_value"] = brl(last)
+    return plan
+
+
 def _availability(p: Product) -> str:
     if p.status == "active":
         return "available" if p.stock_quantity > 0 else "temporarily_unavailable"
@@ -79,7 +89,6 @@ def product_view(p: Product) -> dict:
     percent = promo.discount_percent if promo else None
     price = effective_price(p.price_brl, percent)
     pix = pix_price(p.price_brl, percent)
-    installments, installment_value = max_installments(price)
     availability = _availability(p)
     return {
         "product_id": p.product_id,
@@ -88,7 +97,7 @@ def product_view(p: Product) -> dict:
         "list_price": brl(p.price_brl),
         "promotion": {"percent": percent, "price": brl(price), "original_price": brl(p.price_brl)} if promo else None,
         "pix_price": brl(pix) if pix else None,
-        "installments": {"max": installments, "value": brl(installment_value)},
+        "installments": installments_view(price),
         "split_payment_allowed": allows_split_payment(price),
         "availability": availability,
         "low_stock": availability == "available" and p.stock_quantity <= 2,

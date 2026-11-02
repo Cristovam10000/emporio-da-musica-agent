@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime
+from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
@@ -99,6 +100,24 @@ def test_promotion_price_replaces_pix():
     assert product["promotion"] == {"percent": 20, "price": "R$ 439,20", "original_price": "R$ 549,00"}
     assert product["pix_price"] is None
     assert product["installments"] == {"max": 5, "value": "R$ 87,84"}  # computed on R$ 439,20
+
+
+def money(text):
+    return Decimal(text.removeprefix("R$ ").replace(".", "").replace(",", "."))
+
+
+@pytest.mark.parametrize(
+    "price, expected",
+    [
+        ("599.90", {"max": 6, "value": "R$ 99,98", "last_value": "R$ 100,00"}),
+        ("849.00", {"max": 8, "value": "R$ 106,13", "last_value": "R$ 106,09"}),
+        ("1200.30", {"max": 12, "value": "R$ 100,03", "last_value": "R$ 99,97"}),
+    ],
+)
+def test_installments_add_up_to_the_price(price, expected):
+    plan = tools.installments_view(Decimal(price))
+    assert plan == expected
+    assert money(plan["value"]) * (plan["max"] - 1) + money(plan["last_value"]) == Decimal(price)
 
 
 @pytest.mark.parametrize(
