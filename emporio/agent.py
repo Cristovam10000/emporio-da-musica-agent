@@ -15,7 +15,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from langgraph.checkpoint.memory import InMemorySaver
 
 from emporio import tools
-from emporio.prompts import build_system_prompt
+from emporio.prompts import build_system_prompt, customer_language
 
 DEFAULT_RECURSION_LIMIT = 11  # 5 tool rounds + final answer: each round is 2 graph steps (model, tools)
 FALLBACK_MESSAGE = (
@@ -42,7 +42,10 @@ class Turn:
 
 @dynamic_prompt
 def store_prompt(request: ModelRequest) -> str:
-    return build_system_prompt(tools.now())  # rebuilt per model call: store status stays current
+    """Rebuilt per model call: the store status stays current and the reply language follows
+    the customer's latest message."""
+    latest = next((m.text for m in reversed(request.messages) if isinstance(m, HumanMessage)), "")
+    return build_system_prompt(tools.now(), customer_language(latest))
 
 
 def resolve_model_name(model_name: str | None = None) -> str:

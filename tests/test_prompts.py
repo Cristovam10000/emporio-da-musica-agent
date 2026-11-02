@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from emporio.prompts import build_system_prompt
+from emporio.prompts import build_system_prompt, customer_language
 from emporio.rules import TZ
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -84,3 +84,32 @@ def test_inconsistent_received_date_gets_no_deadlines():
 
 def test_installments_mention_the_last_value():
     assert '"(last one {last_value})"' in build_system_prompt(datetime(2026, 11, 4, 10, 0))
+
+
+def _script_messages(path: Path) -> list[str]:
+    return [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip() and not line.startswith("#")]
+
+
+@pytest.mark.parametrize("path", SCRIPTS, ids=lambda p: p.name)
+def test_language_detected_for_every_script_message(path):
+    expected = "Portuguese" if path.name.endswith("_pt.txt") else "English"
+    for message in _script_messages(path):
+        assert customer_language(message) == expected, message
+
+
+def test_language_detected_for_every_eval_message():
+    for case in yaml.safe_load((ROOT / "evals" / "cases.yaml").read_text(encoding="utf-8")):
+        expected = "Portuguese" if case["id"].endswith("_pt") else "English"
+        for message in case["messages"]:
+            assert customer_language(message) == expected, message
+
+
+def test_language_unknown_without_clues():
+    assert customer_language("8") is None
+    assert customer_language("ok") is None
+
+
+def test_detected_language_is_stated_in_the_prompt():
+    prompt = build_system_prompt(datetime(2026, 11, 4, 10, tzinfo=TZ), "English")
+    assert "latest message is in English: write your whole reply in English" in prompt
+    assert "latest message is in" not in build_system_prompt(datetime(2026, 11, 4, 10, tzinfo=TZ))
