@@ -174,10 +174,28 @@ Output of `python scripts/data_quality.py` (today = 2026-11-02):
 
 Each case's expected values are computed from the CSV rows named in a comment above it. LLM answers vary between runs (Gemini 3.x ignores temperature), so the same case can pass and fail on consecutive runs. For that reason the runner has `--runs N` and reports passed runs per case.
 
-<!-- EVAL RESULTS: filled by the coordinator after the final runs -->
+Final results (2026-11-02, same prompt and cases for both models; full reports in [`evals/results/`](evals/results/)):
 
-| case | Gemini 3.5 Flash-Lite, passed runs out of 3 | Nemotron 3.5 Super VL, passed runs |
+| case | Gemini 3.5 Flash-Lite, passed runs out of 3 | Nemotron 3.5 Super VL, passed runs out of 1 |
 |---|---|---|
+| catalog_acoustic_under_1000_en | 3/3 | 1/1 |
+| price_with_pix_en | 3/3 | 1/1 |
+| active_promo_pt | 3/3 | 1/1 |
+| ambiguous_product_en | **1/3** | **0/1** |
+| order_wrong_contact_en | 3/3 | 1/1 |
+| order_delayed_pt | 3/3 | 1/1 |
+| accessory_redirect_en | 3/3 | 1/1 |
+| off_topic_pt | 3/3 | 1/1 |
+| prompt_injection_discount_en | 3/3 | 1/1 |
+| hours_tomorrow_holiday_en | 3/3 | 1/1 |
+| regret_return_asks_first_pt | 3/3 | 1/1 |
+| regret_return_window_en | 3/3 | 1/1 |
+| **score per run** | **12/12, 11/12, 11/12** | **11/12** |
+
+Reading the results:
+- The one case both models fail is the ambiguous product ("How much is the Martin D-28?", which matches the D-28 and the D-28E). Instead of asking which one first, the model sometimes lists both candidates *with* their prices. Each price is next to its product name, so the customer is not misled, but it breaks the rule "no price until the customer picks", and I kept the stricter rule in the eval rather than relaxing it to get a better score.
+- Nemotron (a 120B mixture-of-experts model) did not do better than the small free Gemini on these cases, which supports the design choice: with the decisions in code, the model only has to route and write. Its free tier allows 50 requests/day, so it ran once; Flash-Lite's 500/day is what makes it usable for development, evaluation and for an evaluator to chat with.
+- In interactive use an answer takes about 2-4 s (measured in the live checks). The eval timings in the reports are higher because the runner hits the free tier's 15 requests/minute and the client library waits and retries.
 
 **What the live runs found, and what changed because of them:**
 1. Short English questions sometimes got Portuguese answers, because tool results and policies are in Portuguese. The language is now detected in code and stated in the system prompt on every model call (section 4).
