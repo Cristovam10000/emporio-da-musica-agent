@@ -42,8 +42,31 @@ def test_takamine_gd20_is_a_single_match_with_pix_price():
     assert product["split_payment_allowed"] is True
 
 
-def test_martin_d28_is_ambiguous():
-    result = find_product.invoke({"name": "martin d-28"})
+@pytest.mark.parametrize(
+    "query, product_id",
+    [
+        ("Takamine GD20", 95),
+        ("takamine gd 20", 95),
+        ("takamine gd-20", 95),
+        ("takamine GD20 violão", 95),
+        ("ohana ck20", 121),
+        ("ohana ck-20", 121),
+        ("ukulele ohana concert", 121),
+        ("martin d-28e", 108),
+        ("yamaha c40", 81),
+        ("yamaha c 40", 81),
+        ("Yamaha F-310", 87),
+    ],
+)
+def test_model_code_separators_do_not_matter(query, product_id):
+    result = find_product.invoke({"name": query})
+    assert result["ambiguous"] is False
+    assert ids(result["matches"]) == [product_id]
+
+
+@pytest.mark.parametrize("query", ["martin d-28", "martin d28"])
+def test_martin_d28_is_ambiguous(query):
+    result = find_product.invoke({"name": query})
     assert result["ambiguous"] is True
     assert set(ids(result["matches"])) == {93, 108}
 

@@ -109,22 +109,29 @@ PLAUSIBLE_MARGIN = 0.15  # candidates this close to the best one are equally pla
 
 
 def _tokens(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", normalize_text(text))
+    # Letter/digit runs, so "gd20", "gd-20" and "gd 20" all become ["gd", "20"].
+    return re.findall(r"[a-z]+|[0-9]+", normalize_text(text))
 
 
 @cache
-def _search_tokens(product_id: int) -> frozenset[str]:
+def _search_tokens(product_id: int) -> tuple[frozenset[str], frozenset[str]]:
+    """(name tokens, all tokens: name + category + description + specs)."""
     p = load_data().products[product_id]
     category = load_data().categories[p.category_id]
     specs = " ".join(str(v) for v in p.specs.values())
-    return frozenset(_tokens(f"{p.name} {category.name} {p.description} {specs}"))
+    name = frozenset(_tokens(p.name))
+    return name, name | frozenset(_tokens(f"{category.name} {p.description} {specs}"))
 
 
-def _score(query_tokens: list[str], product_tokens: frozenset[str]) -> float:
+def _score(query_tokens: list[str], product_tokens: tuple[frozenset[str], frozenset[str]]) -> float:
     """Average, over the query tokens, of the best similarity to any product token."""
+    name_tokens, all_tokens = product_tokens
     total = 0.0
     for q in query_tokens:
-        best = max(difflib.SequenceMatcher(None, q, t).ratio() for t in product_tokens)
+        # Short tokens are model-code fragments ("d", "28", "e"); matching them in prose
+        # would let the Portuguese "e" (and) turn "d-28" into "d-28e".
+        pool = name_tokens if len(q) <= 2 else all_tokens
+        best = max(difflib.SequenceMatcher(None, q, t).ratio() for t in pool)
         total += best if best >= MIN_TOKEN_SIMILARITY else 0
     return total / len(query_tokens)
 
