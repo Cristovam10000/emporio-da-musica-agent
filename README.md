@@ -29,7 +29,7 @@ Copy `.env.example` to `.env` (`copy .env.example .env` on Windows, `cp .env.exa
 | `python -m emporio --debug` | Same, and after each answer it prints the tool calls, their arguments, a short result and the latency. |
 | `python -m emporio --now 2026-11-01T21:30` | Fixes the store clock (Campo Grande time), for example to see the "closed on a holiday" behaviour. |
 | `python -m emporio --script examples/scripts/01_catalog.txt --out examples/01_catalog.md` | Script mode: replays a conversation script against the real model and writes a Markdown transcript with the tool calls. |
-| `python -m pytest` | 135 deterministic tests. They use no LLM and no API key. |
+| `python -m pytest` | 137 deterministic tests. They use no LLM and no API key. |
 | `python evals/run_eval.py --runs 3` | Routing eval against the real model (section 7). Add `--compare` to also run `EMPORIO_COMPARE_MODEL`, which needs `OPENROUTER_API_KEY`. Reports are written to `evals/results/`. |
 | `python scripts/data_quality.py` | Prints the data quality findings (section 6). It needs no API key. |
 
@@ -85,7 +85,7 @@ Repository layout: `emporio/` (`data.py` loading and normalization, `rules.py` b
 **Prompt strategy.** The system prompt (`emporio/prompts.py`) has five parts:
 1. A language rule first.
 2. The persona: Lia, who says she is a virtual assistant.
-3. A per-call **Current context** block: date and time in Campo Grande, open or closed, next opening, tomorrow's hours. All of it is computed by `rules.store_status`, so "are you open tomorrow?" on a holiday eve is answered correctly without a tool call.
+3. A per-call **Current context** block: the regular hours, date and time in Campo Grande, open or closed and *why* (Sunday, the holiday's name, or outside opening hours), next opening, tomorrow's hours. All of it is computed by `rules.store_status` and `rules.holiday_name`, so "are you open tomorrow?" on a holiday eve is answered correctly without a tool call. The reason is there because of a measured problem: when the context only said "Tomorrow: closed", the model invented "we are closed on Mondays" for the All Souls' Day holiday. The general lesson: facts the model needs are computed in code and stated explicitly, never left for it to infer.
 4. "Golden rules" for grounding: prices, stock, promotions and orders come only from tools; policies only from `get_store_policy`; prices copied exactly; never announce a lookup without making it.
 5. A **routing table** (which question goes to which tool), followed by rules for products, orders, returns, scope and security (prompt injection, discount requests).
 
@@ -156,13 +156,13 @@ Output of `python scripts/data_quality.py` (today = 2026-11-02):
 
 ## 7. Evaluation
 
-**Unit tests (135, no LLM, run in about 3 seconds).**
+**Unit tests (137, no LLM, run in about 3 seconds).**
 
 | File | Tests | Covers |
 |---|---|---|
-| `tests/test_rules.py` | 23 | PIX, promotions, installment tier boundaries and inexact divisions, split payment, open/closed with holidays (Sunday 2026-11-01 21:00 → reopens Tuesday 09:00, skipping All Souls' Day), return windows including the deadline day. |
+| `tests/test_rules.py` | 24 | PIX, promotions, installment tier boundaries and inexact divisions, split payment, open/closed with holidays (Sunday 2026-11-01 21:00 → reopens Tuesday 09:00, skipping All Souls' Day), holiday names, return windows including the deadline day. |
 | `tests/test_tools.py` | 58 | Search ("takamine gd20", "gd 20", "ck20" → the right product; "martin d-28" ambiguous; "GD99" is not GD20), listing excludes out-of-stock and discontinued items, the order flow (wrong contact gets the generic refusal, order 8 is delayed, a received date before the purchase is rejected), installments that add up to the price, policy sections, ticket numbering, JSON-serializable results. |
-| `tests/test_prompts.py` | 22 | Store status in the prompt, every tool named, language detection for every script and eval message, eval-case and script schemas. |
+| `tests/test_prompts.py` | 23 | Store status and closed-day reason in the prompt, every tool named, language detection for every script and eval message, eval-case and script schemas. |
 | `tests/test_eval.py` | 15 | The eval checker itself, including answers that must fail (from the code review). |
 | `tests/test_agent.py` | 8 | Agent and CLI with a scripted fake model: memory between turns, the step limit and provider errors falling back while keeping the thread usable, script mode transcripts with the `[demo]` line, `--now`, exit code 2 without a model. |
 | `tests/test_data.py`, `tests/test_data_quality.py` | 9 | Loading, types, normalization, the data quality script. |
@@ -185,7 +185,8 @@ Each case's expected values are computed from the CSV rows named in a comment ab
 3. Catalog questions sometimes got clarifying questions instead of a `list_products` call. Fix: "list first, ask after".
 4. After the code review tightened the discount case to require the real price, the assistant now refuses the discount, calls `find_product` and gives the real and PIX prices.
 5. The model sometimes said "let me check" without calling a tool. Fix: the rule "never announce a lookup".
-6. An empty category answer claimed "we do carry woodwind instruments". Fix: the rule now says to never claim the store carries the category, and conversation 04 was regenerated.
+6. An empty category answer claimed "we do carry woodwind instruments". Fix: the rule now says to never claim the store carries the category.
+7. Asked "are you open tomorrow?" on the eve of the All Souls' Day holiday, the model answered "we are closed on Mondays". Fix: the context now states the regular hours and the reason for a closed day (section 4). Conversation 04 was regenerated after fixes 6 and 7.
 
 ## 8. Example conversations
 
@@ -212,6 +213,7 @@ The scripts are in `examples/scripts/`. To regenerate one: `python -m emporio --
 - **The language heuristic covers Portuguese and English only.** Other languages fall back to the prompt rule.
 - **Holidays:** movable municipal holidays and optional days off (e.g. Carnival) are not covered.
 - **A small free model is variable.** Pass rates differ between runs (section 7). Next: more eval cases, and a larger model if the pass rate on the hard cases does not hold.
+- **Price formatting can drift.** The model occasionally rewrites a price in English notation: in conversation 04, turn 5, the tool returned "R$ 2.199,00" and the answer says "R$ 2,199.00" (same value). Next: a deterministic check in code that every R$ amount in an answer appears in the turn's tool results, with a retry or a flag when it does not.
 - **Reuse:** expose the tools as an MCP server (`langchain-mcp-adapters`) so other clients and agents can use them.
 - **Routing confidence:** a decision-only routing model that returns confidence scores (e.g. TypeSafe's Jev) could send low-confidence turns to a human.
 
