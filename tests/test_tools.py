@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from emporio import tools
+from emporio.rules import INSTALLMENT_BANDS
 from emporio.tools import find_product, get_order_status, get_store_policy, handoff_to_human, list_products
 
 ORDER_8_EMAIL = "anacarol.ferreira@coldmail.com"  # customer 2, Ana Carolina Ferreira
@@ -110,14 +111,20 @@ def money(text):
     "price, expected",
     [
         ("599.90", {"max": 6, "value": "R$ 99,98", "last_value": "R$ 100,00"}),
-        ("849.00", {"max": 8, "value": "R$ 106,13", "last_value": "R$ 106,09"}),
-        ("1200.30", {"max": 12, "value": "R$ 100,03", "last_value": "R$ 99,97"}),
+        ("849.00", {"max": 8, "value": "R$ 106,12", "last_value": "R$ 106,16"}),
+        # Gate C: rounding the shares up pushed the last one under the R$100 tier minimum
+        ("1200.30", {"max": 12, "value": "R$ 100,02", "last_value": "R$ 100,08"}),
+        ("1200.06", {"max": 12, "value": "R$ 100,00", "last_value": "R$ 100,06"}),
+        ("700.04", {"max": 7, "value": "R$ 100,00", "last_value": "R$ 100,04"}),
     ],
 )
-def test_installments_add_up_to_the_price(price, expected):
+def test_installments_add_up_and_respect_the_minimum(price, expected):
     plan = tools.installments_view(Decimal(price))
     assert plan == expected
     assert money(plan["value"]) * (plan["max"] - 1) + money(plan["last_value"]) == Decimal(price)
+    minimum = next(m for top, m in INSTALLMENT_BANDS if plan["max"] <= top)
+    assert min(money(plan["value"]), money(plan["last_value"])) >= minimum
+    assert money(plan["last_value"]) >= money(plan["value"])
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,7 @@ import difflib
 import json
 import re
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from pathlib import Path
 from typing import Literal
@@ -69,9 +69,15 @@ def brl(value: Decimal) -> str:
 
 
 def installments_view(price: Decimal) -> dict:
-    """Interest-free plan; "last_value" only when rounding makes the last installment differ."""
-    n, value = max_installments(price)
-    last = price - value * (n - 1)  # so the installments add up to the price exactly
+    """Interest-free plan; "last_value" only when the cents make the last installment differ.
+
+    Shares are truncated to the cent and the remainder goes to the last one, so the installments
+    add up to the price and none falls below the tier minimum (rounding up could push the last
+    one under it: 12x of 1200.06 would end with R$ 99,95).
+    """
+    n, _ = max_installments(price)
+    value = (price / n).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    last = price - value * (n - 1)
     plan = {"max": n, "value": brl(value)}
     if last != value:
         plan["last_value"] = brl(last)
