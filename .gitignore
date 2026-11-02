@@ -1,0 +1,12 @@
+# Local-only material (planning notes, original challenge files)
+_private/
+
+# Secrets and runtime artifacts
+.env
+tickets.jsonl
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
