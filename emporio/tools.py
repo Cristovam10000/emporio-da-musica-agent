@@ -285,7 +285,7 @@ def get_order_status(order_id: int, contact: str, received_on: date | None = Non
     Use it when the customer asks about an existing order. Needs the order number AND the
     buyer's e-mail or phone; ask for both if missing. Pass received_on only when the customer
     told you when they received the item; the result then includes the return/exchange and
-    warranty deadlines.
+    warranty deadlines, or "received_on_error" when that date is before the order date.
     """
     data = load_data()
     order = data.orders.get(order_id)
@@ -310,7 +310,13 @@ def get_order_status(order_id: int, contact: str, received_on: date | None = Non
         and order.estimated_delivery is not None
         and order.estimated_delivery < today,
     }
-    if received_on:
+    # Checked only after the contact matches, so a wrong contact still learns nothing.
+    if received_on and received_on < order.order_date:
+        result["received_on_error"] = (
+            f"received_on {received_on.isoformat()} is before the order date {order.order_date.isoformat()}; "
+            "ask the customer to check the date they received the item."
+        )
+    elif received_on:
         windows = return_windows(received_on, today, purchased_on=order.order_date)
         result["days_since_receipt"] = (today - received_on).days
         result["return_windows"] = {

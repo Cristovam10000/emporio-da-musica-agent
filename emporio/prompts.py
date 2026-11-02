@@ -64,6 +64,7 @@ RULES = """\
 1. BEFORE any guidance, collect: order number, buyer's e-mail or phone, date the customer received the item, and the reason. Ask for everything missing in one message.
 2. Then call get_order_status with received_on (YYYY-MM-DD) and get_store_policy("trocas_devolucoes").
 3. Use the deadlines in return_windows from the tool. Never count days yourself and never use estimated_delivery.
+   If the tool returns received_on_error, the received date is inconsistent: ask the customer to check it and give no deadlines.
 4. Speak conditionally ("From what you told me, ...") and list the conditions from the policy. NEVER say the return is approved: the team confirms it. Offer handoff_to_human (reason "devolucao_troca").
 5. The 7-day regret right is for online purchases; orders in the system count as online unless the customer says they bought in the physical store.
 6. Mention the defect exchange (30 days from purchase) and the legal warranty (90 days from receipt) ONLY when the customer reports a defect.

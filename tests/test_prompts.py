@@ -75,3 +75,8 @@ def test_language_rule_comes_first():
 def test_unconfirmed_product_gets_no_price():
     prompt = build_system_prompt(datetime(2026, 11, 4, 10, 0))
     assert 'ambiguous=true or a "note"' in prompt and "Quote NO price until the customer confirms" in prompt
+
+
+def test_inconsistent_received_date_gets_no_deadlines():
+    prompt = build_system_prompt(datetime(2026, 11, 4, 10, 0))
+    assert "received_on_error" in prompt and "give no deadlines" in prompt

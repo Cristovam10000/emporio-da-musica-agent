@@ -202,6 +202,36 @@ def test_received_on_adds_return_windows():
     }
 
 
+ORDER_7_DATE = date(2026, 2, 3)
+
+
+def order_7_owner_email():
+    data = tools.load_data()
+    return data.customers[data.orders[7].customer_id].email
+
+
+def test_received_before_order_date_asks_to_check_it():
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": 7, "contact": order_7_owner_email(), "received_on": "2026-01-01"})
+    assert result["found"] is True and result["order_date"] == ORDER_7_DATE.isoformat()
+    assert "return_windows" not in result and "days_since_receipt" not in result
+    assert "before the order date 2026-02-03" in result["received_on_error"]
+
+
+def test_received_on_the_order_date_is_accepted():
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": 7, "contact": order_7_owner_email(), "received_on": ORDER_7_DATE})
+    assert result["return_windows"]["regret"] == {"deadline": "2026-02-10", "still_open": False}
+    assert "received_on_error" not in result
+
+
+@pytest.mark.parametrize("order_id, contact", [(7, "someone@else.com"), (999, ORDER_8_EMAIL)])
+def test_bad_received_date_does_not_change_not_found(order_id, contact):
+    tools.set_now(datetime(2026, 2, 20, 10, 0))
+    result = get_order_status.invoke({"order_id": order_id, "contact": contact, "received_on": "2020-01-01"})
+    assert result == tools.ORDER_NOT_FOUND
+
+
 def test_received_on_in_the_future_is_rejected():
     with pytest.raises(ValidationError):
         get_order_status.invoke({"order_id": 8, "contact": ORDER_8_EMAIL, "received_on": "2026-11-02"})
