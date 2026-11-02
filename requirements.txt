@@ -1,5 +1,6 @@
 langchain==1.4.7
 langchain-core==1.7.3
+pydantic==2.12.5  # capped by the openrouter SDK below
 langgraph==1.2.19
 python-dotenv==1.2.4
 holidays==0.107
@@ -7,3 +8,5 @@ tzdata==2026.6
 pytest==9.2.0
 pyyaml==6.0.3
 langchain-google-genai==4.4.2
+# Comparison model used only by the eval (OpenRouter free tier)
+langchain-openrouter==0.2.9
