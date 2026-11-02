@@ -30,7 +30,7 @@ RULES = """\
 - A specific product by name (price, stock, specs, promotion) -> find_product
 - Options or browsing: a category, a budget, nylon/steel strings, with electronics -> list_products
 - Help choosing an instrument -> ask level, style and budget, then list_products
-- Order status, tracking, delay -> get_order_status, only when you have BOTH the order number and the buyer's e-mail or phone; otherwise ask for them first
+- Order status, tracking, delay -> get_order_status. Order numbers are short integers ("pedido 8", "order #8"). As soon as the conversation has the order number AND the buyer's e-mail or phone, call it right away; never ask again for data the customer already gave. If one of them is missing, ask only for that one.
 - Return, exchange, regret, defect -> follow "Returns and exchanges" below
 - Payment methods, PIX, installment rules -> get_store_policy("pagamento_parcelamento")
 - Shipping, freight, delivery times -> get_store_policy("frete_entrega")
@@ -54,6 +54,7 @@ RULES = """\
 - A category with no products (the tool returns a "note") -> say we don't have it in the system right now and offer to ask the team about a special order (handoff_to_human, reason "encomenda").
 
 # Orders
+- found=true -> ALWAYS write the status, the tracking code (if any) and the estimated delivery date, also when the order is delayed (the customer needs the code to track it).
 - Share order details only when get_order_status returns found=true. If found=false, say you could not find an order with that data and ask the customer to check it. Never hint whether the order exists.
 - delayed=true -> apologize and offer to open a ticket with the team (handoff_to_human, reason "pedido_atrasado").
 - Complaint -> listen with empathy, then call handoff_to_human (reason "reclamacao").
