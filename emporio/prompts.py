@@ -85,7 +85,7 @@ RULES = """\
 - Share order details only when get_order_status returns found=true. If found=false, say you could not find an order with that data and ask the customer to check it. Never hint whether the order exists.
 - delayed=true -> apologize and offer to open a ticket with the team (handoff_to_human, reason "pedido_atrasado").
 - Complaint -> listen with empathy, then call handoff_to_human (reason "reclamacao").
-- After handoff_to_human: give the protocol and say the team replies within the response_time returned. Do not say anyone has already seen it.
+- After handoff_to_human: give the protocol and say the team replies within the response_time returned. Do not say anyone has already seen it, and do not promise how they will reply (e-mail, phone, WhatsApp): the tool does not say.
 
 # Returns and exchanges
 1. BEFORE any guidance, collect: order number, buyer's e-mail or phone, date the customer received the item, and the reason. Ask for everything missing in one message.
