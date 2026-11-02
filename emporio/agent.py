@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelRequest, dynamic_prompt
+from langchain.agents.middleware import ModelRequest, ToolErrorMiddleware, dynamic_prompt
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -60,7 +60,8 @@ def build_agent(model_name: str | None = None, *, model: BaseChatModel | None = 
     """`model` injects a ready chat model (tests); otherwise init_chat_model(name or $EMPORIO_MODEL).
     No temperature: Gemini 3.x ignores it and warns."""
     model = model or init_chat_model(resolve_model_name(model_name))
-    return create_agent(model, tools=tools.TOOLS, middleware=[store_prompt], checkpointer=InMemorySaver())
+    middleware = [store_prompt, ToolErrorMiddleware(on_error=_tool_failed)]
+    return create_agent(model, tools=tools.TOOLS, middleware=middleware, checkpointer=InMemorySaver())
 
 
 def run_turn(agent, thread_id: str, text: str) -> Turn:
@@ -83,10 +84,18 @@ def run_turn(agent, thread_id: str, text: str) -> Turn:
 
 def _close_dangling_calls(agent, config: dict, messages: list[BaseMessage]) -> None:
     """A run stopped after the model asked for tools leaves calls without results in the history;
-    providers reject such a thread, so every later turn would fail too."""
-    if messages and isinstance(messages[-1], AIMessage) and messages[-1].tool_calls:
-        results = [ToolMessage("Not executed: step limit reached.", tool_call_id=c["id"]) for c in messages[-1].tool_calls]
-        agent.update_state(config, {"messages": results})
+    providers reject such a thread, so every later turn would fail too. Matched by call id, so a
+    partly answered set of parallel calls is closed too."""
+    answered = {m.tool_call_id for m in messages if isinstance(m, ToolMessage)}
+    missing = [c["id"] for m in messages if isinstance(m, AIMessage) for c in m.tool_calls if c["id"] not in answered]
+    if missing:
+        agent.update_state(config, {"messages": [ToolMessage("Not executed: the turn was interrupted.", tool_call_id=i) for i in missing]})
+
+
+def _tool_failed(exc: Exception, request) -> str:
+    """An unexpected exception inside a tool goes back to the model as an error result instead of
+    crashing the turn. Only the type is shown: the message may carry internal detail."""
+    return f"Tool failed ({type(exc).__name__}). Apologize and offer to pass the request to the team."
 
 
 def _this_turn(messages: list[BaseMessage]) -> list[BaseMessage]:

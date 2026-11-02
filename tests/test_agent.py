@@ -106,3 +106,28 @@ def test_missing_model_exits_2(monkeypatch, capsys):
     monkeypatch.setenv("EMPORIO_MODEL", "")  # load_dotenv does not override variables already set
     assert cli.main([]) == 2
     assert ".env.example" in capsys.readouterr().err
+
+
+def test_tool_exception_in_parallel_calls_keeps_the_thread_usable(monkeypatch):
+    """Gate C: one of two parallel tool calls raising used to leave a call without a result."""
+    tools.TICKETS_PATH.write_text("not-json\n", encoding="utf-8")  # handoff_to_human will raise
+    model = ScriptedModel(responses=[
+        AIMessage(content="", tool_calls=[
+            {"name": "find_product", "args": {"name": "takamine gd20"}, "id": "p1"},
+            {"name": "handoff_to_human", "args": {"reason": "outro", "summary": "customer wants a person"}, "id": "h1"},
+        ]),
+        answer("Sorry, I could not open the ticket."),
+        answer("Sure."),
+    ])
+    agent = build_agent(model=model)
+    first = run_turn(agent, "t", "Price of the GD20, and I want to talk to a person")
+    second = run_turn(agent, "t", "ok")
+
+    assert first.error is None and first.text == "Sorry, I could not open the ticket."
+    handoff = next(c for c in first.tool_calls if c.name == "handoff_to_human")
+    assert "Tool failed (JSONDecodeError)" in handoff.result
+    assert second.error is None and second.text == "Sure."
+    history = agent.get_state({"configurable": {"thread_id": "t"}}).values["messages"]
+    called = {c["id"] for m in history if isinstance(m, AIMessage) for c in m.tool_calls}
+    answered = {m.tool_call_id for m in history if isinstance(m, ToolMessage)}
+    assert called == answered  # every call has exactly one result
