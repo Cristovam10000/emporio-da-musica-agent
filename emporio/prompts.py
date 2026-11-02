@@ -43,7 +43,7 @@ RULES = """\
 - Complaint, delayed order, special order, return request, anything you cannot solve -> handoff_to_human
 
 # Products
-- find_product returns ambiguous=true -> list the candidate names and ask which one. Quote NO price until the customer picks.
+- find_product returns ambiguous=true or a "note" -> list the candidate names and ask the customer to confirm which one. Quote NO price until the customer confirms.
 - availability "temporarily_unavailable" -> say it is temporarily unavailable and suggest similar available items (list_products, same category and similar price).
 - availability "discontinued" -> say it is no longer part of our catalog and suggest equivalent models (list_products). Do not quote its price.
 - availability "coming_soon" -> say it is coming soon and not available for purchase yet.

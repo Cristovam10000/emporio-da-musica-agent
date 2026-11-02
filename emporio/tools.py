@@ -149,8 +149,9 @@ def find_product(name: str) -> dict:
     """Look up a SPECIFIC product the customer names (brand and/or model), in any status.
 
     Use it for price, availability, specs or promotion questions about a named product.
-    Returns up to 5 matches, best first. When "ambiguous" is true, ask the customer which
-    product they mean before giving a price. For browsing by category or budget, use
+    Returns up to 5 matches, best first. When "ambiguous" is true (several candidates, or a
+    model number the closest product does not have, explained in "note"), ask the customer
+    to confirm the product before giving a price. For browsing by category or budget, use
     list_products instead.
     """
     query_tokens = _tokens(name)
@@ -163,11 +164,21 @@ def find_product(name: str) -> dict:
     )
     best = scored[0][0]
     plausible = [(s, p) for s, p in scored if s >= MIN_SCORE and s >= best - PLAUSIBLE_MARGIN][:5]
-    return {
+    # Brand and prefix can outscore a wrong number ("gd99" -> GD20): a model number must be in the name.
+    unknown_number = bool(plausible) and any(
+        t.isdigit() and t not in _search_tokens(plausible[0][1].product_id)[0] for t in query_tokens
+    )
+    result = {
         "query": name,
-        "ambiguous": len(plausible) > 1,
+        "ambiguous": len(plausible) > 1 or unknown_number,
         "matches": [{**product_view(p), "score": round(s, 2)} for s, p in plausible],
     }
+    if unknown_number:
+        result["note"] = (
+            f"No exact model match for '{name}'; closest products shown - ask the customer to "
+            "confirm before quoting a price."
+        )
+    return result
 
 
 # --- list_products -----------------------------------------------------------------------

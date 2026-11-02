@@ -71,6 +71,18 @@ def test_martin_d28_is_ambiguous(query):
     assert set(ids(result["matches"])) == {93, 108}
 
 
+@pytest.mark.parametrize("query, closest_id", [("Takamine GD99", 95), ("Ohana CK-99", 121)])
+def test_unknown_model_number_asks_to_confirm(query, closest_id):
+    result = find_product.invoke({"name": query})
+    assert result["ambiguous"] is True
+    assert ids(result["matches"]) == [closest_id]
+    assert "confirm before quoting" in result["note"]
+
+
+def test_exact_model_number_has_no_note():
+    assert "note" not in find_product.invoke({"name": "takamine gd20"})
+
+
 def test_brand_only_lists_all_its_products():
     result = find_product.invoke({"name": "takamine"})
     assert result["ambiguous"] is True

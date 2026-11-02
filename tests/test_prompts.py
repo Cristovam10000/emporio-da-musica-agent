@@ -70,3 +70,8 @@ def test_language_rule_comes_first():
     assert prompt.startswith("# Language")
     assert "customer's LATEST message" in prompt and "written in Portuguese" in prompt
     assert prompt.index("# Language") < prompt.index("# Which tool to call")
+
+
+def test_unconfirmed_product_gets_no_price():
+    prompt = build_system_prompt(datetime(2026, 11, 4, 10, 0))
+    assert 'ambiguous=true or a "note"' in prompt and "Quote NO price until the customer confirms" in prompt
